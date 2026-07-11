@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soundify – Music for Everyone</title>
+  <meta name="description" content="Soundify – Stream unlimited music, earn rewards, and go premium for the best experience." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg class="logo-icon" viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="20" fill="#1DB954"/>
+        <path d="M28 25.5C23.5 23 17 22.5 12 23.8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <path d="M29.5 20.5C24.2 17.8 15.8 17 10.5 18.8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <path d="M30.5 15C24.8 12.2 14.2 11.5 8.5 13.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text">Soundify</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" id="nav-home" onclick="showPage('home');return false">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span>Home</span>
+      </a>
+      <a href="#" class="nav-item" id="nav-search" onclick="showPage('search');return false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Search</span>
+      </a>
+      <a href="#" class="nav-item" id="nav-library" onclick="showPage('library');return false">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z"/></svg>
+        <span>Your Library</span>
+      </a>
+      <a href="#" class="nav-item premium-nav" id="nav-premium" onclick="showPage('premium');return false">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/><path d="M11 11l-2.5-2.5-1.5 1.5L11 14l6-6-1.5-1.5z"/></svg>
+        <span>Go Premium</span>
+        <span class="premium-badge">NEW</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <button class="create-playlist-btn" onclick="showNotification('✨ Playlist created!')">
+        <div class="plus-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </div>
+        Create Playlist
+      </button>
+      <button class="liked-songs-btn" onclick="showPage('liked')">
+        <div class="liked-icon">
+          <svg viewBox="0 0 24 24" fill="white"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </div>
+        Liked Songs
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-playlists">
+      <p class="playlists-label">PLAYLISTS</p>
+      <ul class="playlist-list" id="sidebar-playlist-list"></ul>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content" id="main-content">
+
+    <!-- TOP BAR -->
+    <div class="topbar" id="topbar">
+      <div class="topbar-nav">
+        <button class="nav-btn" onclick="historyBack()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <button class="nav-btn" onclick="historyForward()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+      </div>
+      <div class="topbar-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="search-input" placeholder="What do you want to listen to?" oninput="handleSearch(this.value)" />
+      </div>
+      <div class="topbar-user">
+        <button class="upgrade-btn" onclick="showPage('premium')">Explore Premium</button>
+        <div class="user-avatar" title="Profile">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: HOME ===== -->
+    <div class="page" id="page-home">
+      <div class="page-inner">
+        <section class="greeting-section">
+          <h1 class="greeting" id="greeting-text">Good morning</h1>
+          <div class="quick-picks" id="quick-picks"></div>
+        </section>
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Featured Today</h2>
+            <a href="#" class="show-all" onclick="showPage('library');return false">Show all</a>
+          </div>
+          <div class="cards-grid" id="featured-grid"></div>
+        </section>
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Recently Played</h2>
+            <a href="#" class="show-all" onclick="return false">Show all</a>
+          </div>
+          <div class="cards-grid" id="recent-grid"></div>
+        </section>
+        <section class="content-section">
+          <div class="section-header">
+            <h2>Made for You</h2>
+            <a href="#" class="show-all" onclick="return false">Show all</a>
+          </div>
+          <div class="cards-grid" id="made-for-you-grid"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: SEARCH ===== -->
+    <div class="page hidden" id="page-search">
+      <div class="page-inner">
+        <h1 class="page-title">Search</h1>
+        <div class="search-results hidden" id="search-results">
+          <h2 style="margin-bottom:16px">Results</h2>
+          <div class="cards-grid" id="search-results-grid"></div>
+        </div>
+        <div id="browse-section">
+          <h2 class="browse-title">Browse categories</h2>
+          <div class="categories-grid" id="categories-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: LIBRARY ===== -->
+    <div class="page hidden" id="page-library">
+      <div class="page-inner">
+        <h1 class="page-title">Your Library</h1>
+        <div class="library-filters">
+          <button class="filter-btn active" onclick="filterLibrary('all',this)">All</button>
+          <button class="filter-btn" onclick="filterLibrary('playlists',this)">Playlists</button>
+          <button class="filter-btn" onclick="filterLibrary('albums',this)">Albums</button>
+        </div>
+        <div class="library-list" id="library-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: LIKED SONGS ===== -->
+    <div class="page hidden" id="page-liked">
+      <div class="liked-header">
+        <div class="liked-header-content">
+          <div class="liked-cover">
+            <svg viewBox="0 0 24 24" fill="white" width="80" height="80"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          </div>
+          <div class="liked-info">
+            <p class="liked-type">Playlist</p>
+            <h1>Liked Songs</h1>
+            <p class="liked-meta">You • <span id="liked-count">0</span> songs</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-inner">
+        <div class="playlist-controls">
+          <button class="play-fab" id="liked-play-fab" onclick="playLiked()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="shuffle-btn" onclick="toggleShuffle()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 8.46 20 10.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+          </button>
+        </div>
+        <div class="tracks-list" id="liked-tracks"></div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: DETAIL ===== -->
+    <div class="page hidden" id="page-detail">
+      <div class="detail-header" id="detail-header">
+        <div class="detail-header-bg" id="detail-header-bg"></div>
+        <div class="detail-header-content">
+          <img class="detail-cover" id="detail-cover" src="" alt="Cover" />
+          <div class="detail-info">
+            <p class="detail-type" id="detail-type">Album</p>
+            <h1 id="detail-title">Title</h1>
+            <p class="detail-meta" id="detail-meta"></p>
+          </div>
+        </div>
+      </div>
+      <div class="page-inner">
+        <div class="playlist-controls">
+          <button class="play-fab" id="detail-play-fab">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="shuffle-btn" onclick="toggleShuffle()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 8.46 20 10.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+          </button>
+          <button class="more-btn" onclick="showNotification('❤️ Added to library')">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          </button>
+        </div>
+        <div class="tracks-list" id="detail-tracks"></div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: PREMIUM ===== -->
+    <div class="page hidden" id="page-premium">
+      <div class="premium-hero">
+        <div class="premium-hero-bg"></div>
+        <div class="premium-hero-content">
+          <div class="premium-logo">
+            <svg viewBox="0 0 24 24" fill="#1DB954" width="48" height="48"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          </div>
+          <h1 class="premium-hero-title">Soundify <span class="gold-text">Premium</span></h1>
+          <p class="premium-hero-sub">Unlimited music. Zero ads. Real earnings.</p>
+          <div class="premium-stats">
+            <div class="pstat"><span class="pstat-num">100M+</span><span class="pstat-lbl">Songs</span></div>
+            <div class="pstat-divider"></div>
+            <div class="pstat"><span class="pstat-num">$0.004</span><span class="pstat-lbl">Per stream earned</span></div>
+            <div class="pstat-divider"></div>
+            <div class="pstat"><span class="pstat-num">5M+</span><span class="pstat-lbl">Artists paid</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-inner premium-inner">
+
+        <!-- PLANS -->
+        <section class="plans-section">
+          <h2 class="plans-title">Choose your plan</h2>
+          <p class="plans-sub">All plans include a 30-day free trial</p>
+          <div class="plans-grid">
+
+            <div class="plan-card">
+              <div class="plan-badge">Most Popular</div>
+              <h3 class="plan-name">Individual</h3>
+              <div class="plan-price"><span class="plan-currency">$</span>9<span class="plan-period">.99/mo</span></div>
+              <ul class="plan-features">
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Ad-free music</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Offline downloads</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>High quality audio</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Unlimited skips</li>
+              </ul>
+              <button class="plan-btn plan-btn-primary" onclick="startPremium('Individual')">Start Free Trial</button>
+            </div>
+
+            <div class="plan-card plan-card-duo">
+              <h3 class="plan-name">Duo</h3>
+              <div class="plan-price"><span class="plan-currency">$</span>12<span class="plan-period">.99/mo</span></div>
+              <ul class="plan-features">
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>2 Premium accounts</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>All Individual features</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Duo Mix playlist</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Combined billing</li>
+              </ul>
+              <button class="plan-btn" onclick="startPremium('Duo')">Get Duo</button>
+            </div>
+
+            <div class="plan-card plan-card-family">
+              <h3 class="plan-name">Family</h3>
+              <div class="plan-price"><span class="plan-currency">$</span>16<span class="plan-period">.99/mo</span></div>
+              <ul class="plan-features">
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>6 Premium accounts</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>All Individual features</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Family Mix playlist</li>
+                <li><svg viewBox="0 0 24 24" fill="#1DB954"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>Block explicit music</li>
+              </ul>
+              <button class="plan-btn" onclick="startPremium('Family')">Get Family</button>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- EARN MONEY SECTION -->
+        <section class="earn-section">
+          <div class="earn-header">
+            <div class="earn-icon">💰</div>
+            <h2>Earn Real Money</h2>
+            <p>Turn your passion for music into income</p>
+          </div>
+
+          <div class="earn-cards">
+            <div class="earn-card" onclick="showEarnModal('stream')">
+              <div class="earn-card-icon">🎵</div>
+              <h3>Stream Royalties</h3>
+              <p>Artists earn per stream. Upload your tracks and start earning.</p>
+              <div class="earn-rate">$0.004 <span>per stream</span></div>
+              <button class="earn-action-btn">Upload Music →</button>
+            </div>
+            <div class="earn-card" onclick="showEarnModal('refer')">
+              <div class="earn-card-icon">👥</div>
+              <h3>Refer & Earn</h3>
+              <p>Get $10 for every friend who subscribes to Premium.</p>
+              <div class="earn-rate">$10 <span>per referral</span></div>
+              <button class="earn-action-btn">Share Link →</button>
+            </div>
+            <div class="earn-card" onclick="showEarnModal('playlist')">
+              <div class="earn-card-icon">📋</div>
+              <h3>Curate Playlists</h3>
+              <p>Build playlists with followers and earn placement fees.</p>
+              <div class="earn-rate">$50–$500 <span>per placement</span></div>
+              <button class="earn-action-btn">Start Curating →</button>
+            </div>
+            <div class="earn-card" onclick="showEarnModal('podcast')">
+              <div class="earn-card-icon">🎙️</div>
+              <h3>Podcast Revenue</h3>
+              <p>Monetize your podcast with listener subscriptions & ads.</p>
+              <div class="earn-rate">$18 CPM <span>average</span></div>
+              <button class="earn-action-btn">Start Podcast →</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- EARNINGS DASHBOARD -->
+        <section class="earnings-dashboard">
+          <h2>Your Earnings Dashboard</h2>
+          <p class="dashboard-sub">Simulated earnings overview</p>
+          <div class="dashboard-grid">
+            <div class="dash-stat">
+              <svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>
+              <span class="dash-num" id="dash-total">$0.00</span>
+              <span class="dash-lbl">Total Earned</span>
+            </div>
+            <div class="dash-stat">
+              <svg viewBox="0 0 24 24" fill="#1DB954"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+              <span class="dash-num" id="dash-streams">0</span>
+              <span class="dash-lbl">Total Streams</span>
+            </div>
+            <div class="dash-stat">
+              <svg viewBox="0 0 24 24" fill="#1DB954"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              <span class="dash-num" id="dash-referrals">0</span>
+              <span class="dash-lbl">Referrals</span>
+            </div>
+            <div class="dash-stat">
+              <svg viewBox="0 0 24 24" fill="#1DB954"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              <span class="dash-num" id="dash-playlists">0</span>
+              <span class="dash-lbl">Playlists Curated</span>
+            </div>
+          </div>
+          <!-- Mini earnings chart -->
+          <div class="earnings-chart">
+            <canvas id="earnings-canvas" width="700" height="140"></canvas>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== PLAYER BAR ===== -->
+<div class="player-bar" id="player-bar">
+  <!-- Now Playing -->
+  <div class="now-playing" id="now-playing">
+    <div class="np-cover-wrap" id="np-cover-wrap">
+      <img id="np-cover" src="album1.jpg" alt="Now playing" />
+    </div>
+    <div class="now-playing-info">
+      <p class="np-title" id="np-title">Select a track</p>
+      <p class="np-artist" id="np-artist">–</p>
+    </div>
+    <button class="np-heart" id="np-heart" onclick="toggleLike()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    </button>
+  </div>
+
+  <!-- Controls -->
+  <div class="player-controls">
+    <div class="control-buttons">
+      <button class="ctrl-btn" id="btn-shuffle" title="Shuffle (Alt+S)" onclick="toggleShuffle()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 8.46 20 10.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+      </button>
+      <button class="ctrl-btn" title="Previous (Alt+←)" onclick="prevTrack()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+      </button>
+      <button class="ctrl-btn play-btn" id="btn-play" title="Play/Pause (Space)" onclick="togglePlay()">
+        <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pause-icon" viewBox="0 0 24 24" fill="currentColor" class="hidden"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      </button>
+      <button class="ctrl-btn" title="Next (Alt+→)" onclick="nextTrack()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
+      <button class="ctrl-btn" id="btn-repeat" title="Repeat (Alt+R)" onclick="toggleRepeat()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+      </button>
+    </div>
+    <div class="progress-wrap">
+      <span class="time" id="time-current">0:00</span>
+      <div class="progress-bar" id="progress-bar" title="Seek">
+        <div class="progress-fill" id="progress-fill"></div>
+        <div class="progress-thumb" id="progress-thumb"></div>
+      </div>
+      <span class="time" id="time-total">0:00</span>
+    </div>
+  </div>
+
+  <!-- Volume + Extra -->
+  <div class="player-volume">
+    <button class="ctrl-btn" title="Queue" onclick="toggleQueue()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+    </button>
+    <button class="ctrl-btn" id="btn-mute" title="Mute (M)" onclick="toggleMute()">
+      <svg id="vol-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      <svg id="vol-mute-icon" viewBox="0 0 24 24" fill="currentColor" class="hidden"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+    </button>
+    <div class="volume-bar" id="volume-bar">
+      <div class="volume-fill" id="volume-fill" style="width:70%"></div>
+      <div class="volume-thumb" id="volume-thumb" style="left:70%"></div>
+    </div>
+    <!-- Visualizer -->
+    <canvas id="visualizer" width="60" height="32" title="Audio visualizer"></canvas>
+  </div>
+</div>
+
+<!-- ===== QUEUE PANEL ===== -->
+<div class="queue-panel hidden" id="queue-panel">
+  <div class="queue-header">
+    <h3>Queue</h3>
+    <button class="queue-close" onclick="toggleQueue()">✕</button>
+  </div>
+  <div class="queue-body">
+    <p class="queue-label">NOW PLAYING</p>
+    <div id="queue-now"></div>
+    <p class="queue-label" style="margin-top:16px">NEXT UP</p>
+    <div id="queue-next"></div>
+  </div>
+</div>
+
+<!-- ===== EARN MODAL ===== -->
+<div class="modal-overlay hidden" id="earn-modal-overlay" onclick="closeEarnModal()">
+  <div class="modal" id="earn-modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeEarnModal()">✕</button>
+    <div id="earn-modal-content"></div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
