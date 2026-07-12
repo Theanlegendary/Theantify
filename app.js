@@ -1,11 +1,10 @@
-/* =============================================
-   SOUNDIFY — app.js
-   Real Web Audio API + Full Player + Premium
-   ============================================= */
+/* ====================================================================
+   SOUNDIFY — app.js (Real Web Audio Synth DSP, Local Files, Persistence)
+   ==================================================================== */
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 // DATA
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 const ALBUMS = [
   {
     id:'a1', title:'Synaptic Waves', artist:'Aethel', type:'Album',
@@ -65,7 +64,7 @@ const ALBUMS = [
   },
 ];
 
-const PLAYLISTS = [
+const DEFAULT_PLAYLISTS = [
   {
     id:'pl1', title:'Chill Vibes', type:'Playlist', cover:'album4.jpg',
     color:'#0a3a5a', description:'Relax and unwind with the best ambient sounds',
@@ -92,24 +91,20 @@ const CATEGORIES = [
   {name:'Latin',      color:'#e91429'}, {name:'Dance',      color:'#1e6432'},
 ];
 
-// Genre → musical scale (MIDI-like note offsets from root)
 const GENRE_SCALES = {
-  electronic: {notes:[0,3,5,7,10,12,15], tempo:128, waveform:'sawtooth', rootHz:110,  bassFreq:55,  arpSpeed:0.12},
-  synthwave:  {notes:[0,2,4,7,9,12,14],  tempo:110, waveform:'square',   rootHz:130.8,bassFreq:65.4,arpSpeed:0.15},
-  ambient:    {notes:[0,4,7,11,12,16,19],tempo:70,  waveform:'sine',     rootHz:82.4, bassFreq:41.2,arpSpeed:0.30},
-  pop:        {notes:[0,2,4,5,7,9,11],   tempo:120, waveform:'triangle', rootHz:98,   bassFreq:49,  arpSpeed:0.10},
+  electronic: {notes:[0,3,5,7,10,12,15], tempo:128, waveform:'sawtooth', rootHz:110,  bassFreq:55,  cutoff:1200, delayFeedback:0.3},
+  synthwave:  {notes:[0,2,4,7,9,12,14],  tempo:110, waveform:'square',   rootHz:130.8,bassFreq:65.4,cutoff:800,  delayFeedback:0.4},
+  ambient:    {notes:[0,4,7,11,12,16,19],tempo:70,  waveform:'sine',     rootHz:82.4, bassFreq:41.2,cutoff:600,  delayFeedback:0.6},
+  pop:        {notes:[0,2,4,5,7,9,11],   tempo:120, waveform:'triangle', rootHz:98,   bassFreq:49,  cutoff:2000, delayFeedback:0.25},
 };
 
-// Flatten all tracks with cover + color
 const ALL_TRACKS = [];
 ALBUMS.forEach(al => al.tracks.forEach(t => ALL_TRACKS.push({...t, cover:al.cover, color:al.color, albumId:al.id, genre:al.genre})));
-function getTrackById(id){ return ALL_TRACKS.find(t=>t.id===id); }
-function getAlbumById(id){ return ALBUMS.find(a=>a.id===id); }
 
-// ─────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────
-const S = {
+// ─────────────────────────────────────────────────────────────────────
+// PERSISTENT STATE
+// ─────────────────────────────────────────────────────────────────────
+let S = {
   track:       null,
   playlist:    [],
   index:       0,
@@ -124,40 +119,129 @@ const S = {
   timer:       null,
   historyStack:['home'],
   historyIdx:  0,
+  customPlaylists: [], // Saved to localStorage
+  localFiles:  [],     // Locally uploaded audio files metadata
 };
 
-// ─────────────────────────────────────────────
-// WEB AUDIO ENGINE
-// ─────────────────────────────────────────────
-let audioCtx    = null;
-let masterGain  = null;
-let arpNodes    = [];  // oscillator + gain pairs currently playing
-let arpTimer    = null;
-let bassNodes   = [];
-let arpStep     = 0;
-let currentGenre = 'electronic';
+// Load saved state from LocalStorage
+function loadState() {
+  try {
+    const savedLiked = localStorage.getItem('soundify_liked');
+    if (savedLiked) S.liked = new Set(JSON.parse(savedLiked));
+
+    const savedPlaylists = localStorage.getItem('soundify_playlists');
+    if (savedPlaylists) S.customPlaylists = JSON.parse(savedPlaylists);
+
+    const savedEarnings = localStorage.getItem('soundify_earnings');
+    if (savedEarnings) S.earnings = JSON.parse(savedEarnings);
+
+    const savedLocalFiles = localStorage.getItem('soundify_local_files');
+    if (savedLocalFiles) {
+      S.localFiles = JSON.parse(savedLocalFiles);
+      // Re-add local files to ALL_TRACKS
+      S.localFiles.forEach(file => {
+        ALL_TRACKS.push(file);
+      });
+    }
+  } catch(e) {
+    console.error('Failed to load localStorage state:', e);
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('soundify_liked', JSON.stringify([...S.liked]));
+    localStorage.setItem('soundify_playlists', JSON.stringify(S.customPlaylists));
+    localStorage.setItem('soundify_earnings', JSON.stringify(S.earnings));
+    localStorage.setItem('soundify_local_files', JSON.stringify(S.localFiles));
+  } catch(e) {
+    console.error('Failed to save state to localStorage:', e);
+  }
+}
+
+function getTrackById(id){ 
+  return ALL_TRACKS.find(t=>t.id===id); 
+}
+function getAlbumById(id){ 
+  return ALBUMS.find(a=>a.id===id); 
+}
+function getCustomPlaylistById(id) {
+  return S.customPlaylists.find(p => p.id === id);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// WEB AUDIO SYNTH / DSP ENGINE
+// ─────────────────────────────────────────────────────────────────────
+let audioCtx       = null;
+let masterGain     = null;
+let delayNode      = null;
+let delayGainNode  = null;
+let filterNode     = null;
+
+let arpNodes       = [];  
+let bassNodes      = [];
+let arpTimer       = null;
+let arpStep        = 0;
+let currentGenre   = 'electronic';
+
+// DSP Control values
+let dspSettings = {
+  tempo: 120,
+  cutoff: 1200,
+  delayFeedback: 0.3,
+  wave: 'sine'
+};
+
+// Local files audio storage
+let localAudioBuffers = {}; // Map of id -> AudioBuffer
+let activeFileSource  = null;
 
 function initAudio() {
   if (audioCtx) return;
   audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = S.volume;
-  masterGain.connect(audioCtx.destination);
-}
+  
+  // Master chain nodes
+  masterGain    = audioCtx.createGain();
+  filterNode    = audioCtx.createBiquadFilter();
+  delayNode     = audioCtx.createDelay(1.5);
+  delayGainNode = audioCtx.createGain();
 
-function midiToHz(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
+  // DSP default parameters
+  masterGain.gain.value = S.volume;
+  filterNode.type = 'lowpass';
+  filterNode.frequency.value = dspSettings.cutoff;
+  delayNode.delayTime.value = 0.3;
+  delayGainNode.gain.value = dspSettings.delayFeedback;
+
+  // Wire Delay feedback loop
+  delayNode.connect(delayGainNode);
+  delayGainNode.connect(delayNode);
+
+  // Synth graph routing: Nodes -> Filter -> Master Gain -> Output
+  // Delay is tapped from filter output and mixed into master gain
+  filterNode.connect(masterGain);
+  filterNode.connect(delayNode);
+  delayNode.connect(masterGain);
+
+  masterGain.connect(audioCtx.destination);
+  
+  updateDSPUI();
 }
 
 function stopAllAudio() {
   clearInterval(arpTimer);
   arpTimer = null;
-  [...arpNodes, ...bassNodes].forEach(([osc]) => {
-    try { osc.stop(); } catch(e){}
+  [...arpNodes, ...bassNodes].forEach(([node]) => {
+    try { node.stop(); } catch(e){}
   });
   arpNodes  = [];
   bassNodes = [];
   arpStep   = 0;
+
+  if (activeFileSource) {
+    try { activeFileSource.stop(); } catch(e){}
+    activeFileSource = null;
+  }
 }
 
 function startMusicForGenre(genre) {
@@ -167,89 +251,55 @@ function startMusicForGenre(genre) {
 
   if (!audioCtx || audioCtx.state === 'suspended') return;
 
+  // Load genre configs into DSP setting if not tweaked manually yet
+  dspSettings.tempo         = cfg.tempo;
+  dspSettings.cutoff        = cfg.cutoff;
+  dspSettings.delayFeedback = cfg.delayFeedback;
+  dspSettings.wave          = cfg.waveform;
+  updateDSPUI();
+
+  // Apply parameters dynamically
+  filterNode.frequency.setValueAtTime(dspSettings.cutoff, audioCtx.currentTime);
+  delayNode.delayTime.setValueAtTime(60 / dspSettings.tempo * 0.5, audioCtx.currentTime);
+  delayGainNode.gain.setValueAtTime(dspSettings.delayFeedback, audioCtx.currentTime);
+
   // ---- Bass drone ----
   const bassOsc  = audioCtx.createOscillator();
   const bassGain = audioCtx.createGain();
-  const bassFilter = audioCtx.createBiquadFilter();
-
-  bassOsc.type      = 'sine';
+  bassOsc.type   = 'sine';
   bassOsc.frequency.value = cfg.bassFreq;
-  bassFilter.type   = 'lowpass';
-  bassFilter.frequency.value = 400;
-  bassGain.gain.value = 0.0;
-
-  bassOsc.connect(bassFilter).connect(bassGain).connect(masterGain);
+  bassGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  
+  bassOsc.connect(filterNode);
   bassOsc.start();
-  bassGain.gain.linearRampToValueAtTime(0.35, audioCtx.currentTime + 0.5);
+  bassGain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.5);
+  bassNodes = [[bassOsc, bassGain]];
 
-  // Slow vibrato on bass
-  const lfoOsc  = audioCtx.createOscillator();
-  const lfoGain = audioCtx.createGain();
-  lfoOsc.frequency.value = 0.3;
-  lfoGain.gain.value = cfg.bassFreq * 0.012;
-  lfoOsc.connect(lfoGain).connect(bassOsc.frequency);
-  lfoOsc.start();
-
-  bassNodes = [[bassOsc, bassGain], [lfoOsc, lfoGain]];
-
-  // ---- Arp / melody sequence ----
-  const notes    = cfg.notes;
-  const rootHz   = cfg.rootHz;
-  const waveform = cfg.waveform;
-  const tempo    = cfg.tempo;
-  const arpSec   = 60 / tempo;
+  // ---- Melody Sequence ----
+  const notes  = cfg.notes;
+  const rootHz = cfg.rootHz;
+  const arpSec = 60 / dspSettings.tempo;
 
   function playArpNote(step) {
-    const noteIdx   = step % notes.length;
-    // Every few bars, go up an octave for variation
-    const octave    = (Math.floor(step / notes.length) % 2 === 0) ? 1 : 2;
-    const freq      = rootHz * Math.pow(2, (notes[noteIdx] / 12) + (octave - 1));
+    const noteIdx = step % notes.length;
+    const octave  = (Math.floor(step / notes.length) % 2 === 0) ? 1 : 2;
+    const freq    = rootHz * Math.pow(2, (notes[noteIdx] / 12) + (octave - 1));
 
     const osc  = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    const rev  = audioCtx.createConvolver(); // fake reverb via delay
 
-    const delay      = audioCtx.createDelay(0.5);
-    const delayGain  = audioCtx.createGain();
-    const filter     = audioCtx.createBiquadFilter();
-
-    osc.type          = waveform;
+    osc.type = dspSettings.wave;
     osc.frequency.value = freq;
-    filter.type       = 'bandpass';
-    filter.frequency.value = freq * 2;
-    filter.Q.value    = 1.5;
-    delay.delayTime.value   = arpSec * 0.5;
-    delayGain.gain.value    = 0.25;
 
     const now = audioCtx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.18, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + arpSec * 0.9);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + arpSec * 0.95);
 
-    osc.connect(filter).connect(gain).connect(masterGain);
-    filter.connect(delay).connect(delayGain).connect(masterGain);
-
+    osc.connect(gain).connect(filterNode);
     osc.start(now);
     osc.stop(now + arpSec);
     arpNodes.push([osc, gain]);
-
-    // Chord pad every 4 steps
-    if (step % 4 === 0) {
-      const chordOsc  = audioCtx.createOscillator();
-      const chordGain = audioCtx.createGain();
-      const chordFilter = audioCtx.createBiquadFilter();
-      chordOsc.type    = 'sine';
-      chordOsc.frequency.value = freq * 1.5; // fifth
-      chordFilter.type = 'lowpass';
-      chordFilter.frequency.value = 1200;
-      chordGain.gain.setValueAtTime(0, now);
-      chordGain.gain.linearRampToValueAtTime(0.08, now + 0.05);
-      chordGain.gain.exponentialRampToValueAtTime(0.001, now + arpSec * 2);
-      chordOsc.connect(chordFilter).connect(chordGain).connect(masterGain);
-      chordOsc.start(now);
-      chordOsc.stop(now + arpSec * 2);
-      arpNodes.push([chordOsc, chordGain]);
-    }
   }
 
   arpStep = 0;
@@ -257,30 +307,57 @@ function startMusicForGenre(genre) {
   arpTimer = setInterval(() => {
     if (!S.playing) return;
     playArpNote(arpStep++);
-    // Prune old nodes
     arpNodes = arpNodes.filter(([osc]) => {
       try { return osc.context.state !== 'closed'; } catch(e){ return false; }
     });
   }, arpSec * 1000);
 }
 
-function resumeAudioCtx() {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-      if (S.playing) startMusicForGenre(currentGenre);
-    });
-  }
+// Play decoded local audio file
+function playLocalFileBuffer(id) {
+  stopAllAudio();
+  const buffer = localAudioBuffers[id];
+  if (!buffer || !audioCtx) return;
+
+  activeFileSource = audioCtx.createBufferSource();
+  activeFileSource.buffer = buffer;
+  
+  // Route local file through the equalizer filter + visualizer graph
+  activeFileSource.connect(filterNode);
+  
+  // Handle song ending
+  activeFileSource.onended = () => {
+    if (S.playing && activeFileSource) {
+      nextTrack();
+    }
+  };
+
+  activeFileSource.start(0);
 }
 
-function setAudioVolume(vol) {
-  if (!masterGain) return;
-  masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
-  masterGain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.05);
+function updateDSPUI() {
+  const elTempo  = document.getElementById('val-tempo');
+  const elCutoff = document.getElementById('val-cutoff');
+  const elDelay  = document.getElementById('val-delay');
+  
+  if (elTempo)  elTempo.textContent  = dspSettings.tempo;
+  if (elCutoff) elCutoff.textContent = dspSettings.cutoff;
+  if (elDelay)  elDelay.textContent  = Math.round(dspSettings.delayFeedback * 100);
+
+  const slideTempo  = document.getElementById('slider-tempo');
+  const slideCutoff = document.getElementById('slider-cutoff');
+  const slideDelay  = document.getElementById('slider-delay');
+  const selectWave  = document.getElementById('select-wave');
+
+  if (slideTempo)  slideTempo.value  = dspSettings.tempo;
+  if (slideCutoff) slideCutoff.value = dspSettings.cutoff;
+  if (slideDelay)  slideDelay.value  = Math.round(dspSettings.delayFeedback * 100);
+  if (selectWave)  selectWave.value  = dspSettings.wave;
 }
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 // VISUALIZER
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 const VIS_BARS = 14;
 let visAnim = null;
 let visPhase = 0;
@@ -295,7 +372,6 @@ function startVisualizer() {
     visAnim = requestAnimationFrame(draw);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!S.playing) {
-      // Static low bars when paused
       ctx.fillStyle = '#535353';
       for (let i = 0; i < VIS_BARS; i++) {
         const x = (i / VIS_BARS) * canvas.width;
@@ -303,7 +379,7 @@ function startVisualizer() {
       }
       return;
     }
-    visPhase += 0.06;
+    visPhase += 0.08;
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grad.addColorStop(0, '#1ed760');
     grad.addColorStop(1, '#1DB954');
@@ -323,129 +399,252 @@ function startVisualizer() {
   draw();
 }
 
-// ─────────────────────────────────────────────
-// EARNINGS CHART
-// ─────────────────────────────────────────────
-function drawEarningsChart() {
-  const canvas = document.getElementById('earnings-canvas');
-  if (!canvas) return;
-  canvas.width  = canvas.offsetWidth  || 700;
-  canvas.height = 140;
-  const ctx  = canvas.getContext('2d');
-  const w    = canvas.width;
-  const h    = canvas.height;
-  const data = [0.2, 0.8, 1.4, 0.9, 2.1, 1.7, 3.2, 2.8, 4.5, 3.9, 5.2, 6.1];
-  const maxV = Math.max(...data) * 1.1;
-  const step = w / (data.length - 1);
+// ─────────────────────────────────────────────────────────────────────
+// FRIEND ACTIVITY DATA & MOCKS
+// ─────────────────────────────────────────────────────────────────────
+const FRIENDS = [
+  { name: 'Alex Johnson', initial: 'A', online: true, trackId: 't1', ageSec: 4 },
+  { name: 'Chloe Vance',  initial: 'C', online: true, trackId: 't8', ageSec: 12 },
+  { name: 'Marcus Brody', initial: 'M', online: true, trackId: 't12', ageSec: 25 },
+  { name: 'Sarah Connor', initial: 'S', online: false, trackId: null, ageSec: 3600 }
+];
 
-  ctx.clearRect(0, 0, w, h);
+function toggleFriendSidebar() {
+  const sidebar = document.getElementById('friend-sidebar');
+  const app = document.getElementById('app');
+  if (sidebar.classList.contains('hidden')) {
+    sidebar.classList.remove('hidden');
+    app.classList.add('with-friend-sidebar');
+    renderFriendActivity();
+  } else {
+    sidebar.classList.add('hidden');
+    app.classList.remove('with-friend-sidebar');
+  }
+}
 
-  // Area fill
-  const areaGrad = ctx.createLinearGradient(0, 0, 0, h);
-  areaGrad.addColorStop(0, 'rgba(29,185,84,0.35)');
-  areaGrad.addColorStop(1, 'rgba(29,185,84,0)');
-  ctx.beginPath();
-  data.forEach((v, i) => {
-    const x = i * step;
-    const y = h - (v / maxV) * h * 0.85 - 10;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
-  ctx.fillStyle = areaGrad;
-  ctx.fill();
-
-  // Line
-  ctx.beginPath();
-  ctx.strokeStyle = '#1DB954';
-  ctx.lineWidth   = 2.5;
-  ctx.lineJoin    = 'round';
-  data.forEach((v, i) => {
-    const x = i * step;
-    const y = h - (v / maxV) * h * 0.85 - 10;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-  // Dots + labels
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  data.forEach((v, i) => {
-    const x = i * step;
-    const y = h - (v / maxV) * h * 0.85 - 10;
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#1DB954';
-    ctx.fill();
-    ctx.fillStyle = '#b3b3b3';
-    ctx.font = '11px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(months[i], x, h - 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px Inter, sans-serif';
-    ctx.fillText('$' + v.toFixed(1), x, y - 8);
+function renderFriendActivity() {
+  const body = document.getElementById('friend-sidebar-body');
+  if (!body) return;
+  body.innerHTML = '';
+  FRIENDS.forEach(friend => {
+    const row = document.createElement('div');
+    row.className = 'friend-row';
+    const tr = friend.trackId ? getTrackById(friend.trackId) : null;
+    row.innerHTML = `
+      <div class="friend-avatar-wrap">
+        <div class="friend-avatar">${friend.initial}</div>
+        <div class="friend-online-dot ${friend.online ? '' : 'offline'}"></div>
+      </div>
+      <div class="friend-info">
+        <p class="friend-name">${friend.name}</p>
+        ${friend.online && tr ? `
+          <p class="friend-song" onclick="playFriendSong('${tr.id}')">⚡ ${tr.title}</p>
+          <p class="friend-meta">${tr.artist} • ${tr.album}</p>
+        ` : `
+          <p class="friend-meta" style="color:var(--text-muted)">Offline</p>
+        `}
+      </div>
+    `;
+    body.appendChild(row);
   });
 }
 
-// ─────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  setGreeting();
-  renderSidebar();
-  renderHomePage();
-  renderSearchPage();
-  renderLibraryPage();
-  renderLikedPage();
-  updatePlayerUI();
-  startVisualizer();
-  updateDashboard();
-
-  // Auto-select first track for player preview
-  const firstTrack = ALL_TRACKS[0];
-  S.track     = firstTrack;
-  S.playlist  = ALBUMS[0].tracks.map(t => ({...t, cover:ALBUMS[0].cover, color:ALBUMS[0].color, genre:ALBUMS[0].genre}));
-  S.index     = 0;
-  S.playing   = false;
-  updatePlayerUI();
-
-  // Resume AudioContext on user gesture
-  document.addEventListener('click', resumeAudioCtx, {once: true});
-});
-
-function setGreeting() {
-  const h = new Date().getHours();
-  const g = h < 12 ? 'Good morning ☀️' : h < 17 ? 'Good afternoon 🎵' : 'Good evening 🌙';
-  document.getElementById('greeting-text').textContent = g;
+function playFriendSong(trackId) {
+  const tr = getTrackById(trackId);
+  if (tr) playTrack(tr, [tr], 0);
 }
 
-// ─────────────────────────────────────────────
-// SIDEBAR
-// ─────────────────────────────────────────────
+// Simulate friend activities changes
+setInterval(() => {
+  FRIENDS.forEach(f => {
+    if (f.online && Math.random() > 0.6) {
+      f.trackId = ALL_TRACKS[Math.floor(Math.random() * ALL_TRACKS.length)].id;
+    }
+  });
+  renderFriendActivity();
+}, 15000);
+
+// ─────────────────────────────────────────────────────────────────────
+// LOCAL FILE LOADER & DROPZONE
+// ─────────────────────────────────────────────────────────────────────
+function setupLocalFileHandlers() {
+  const dropzone = document.getElementById('import-dropzone');
+  const uploader = document.getElementById('file-uploader');
+  
+  if (!dropzone || !uploader) return;
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    handleImportedFiles(e.dataTransfer.files);
+  });
+
+  uploader.addEventListener('change', (e) => {
+    handleImportedFiles(e.target.files);
+  });
+}
+
+function handleImportedFiles(files) {
+  if (!files || !files.length) return;
+  initAudio();
+  showToast(`⚡ Importing ${files.length} file(s)...`);
+
+  Array.from(files).forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      audioCtx.decodeAudioData(evt.target.result, function(buffer) {
+        const id = 'local-' + Date.now() + '-' + index;
+        const localTrack = {
+          id: id,
+          title: file.name.replace(/\.[^/.]+$/, ""), // Strip extension
+          artist: 'Local File',
+          duration: buffer.duration,
+          album: 'Imported Files',
+          cover: 'album4.jpg',
+          color: '#121212',
+          genre: 'local'
+        };
+
+        // Save buffer globally to reference during play
+        localAudioBuffers[id] = buffer;
+        
+        // Add to active state
+        S.localFiles.push(localTrack);
+        ALL_TRACKS.push(localTrack);
+        saveState();
+
+        showToast(`✅ Imported: ${localTrack.title}`);
+        renderLibraryPage();
+      }, function(err) {
+        console.error('Audio decode failed:', err);
+        showToast(`❌ Failed to decode: ${file.name}`);
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// GREETING & SIDEBAR PLAYLISTS
+// ─────────────────────────────────────────────────────────────────────
 function renderSidebar() {
   const list = document.getElementById('sidebar-playlist-list');
   list.innerHTML = '';
-  [...PLAYLISTS, ...ALBUMS].forEach(item => {
+  
+  // Custom user playlists
+  S.customPlaylists.forEach(pl => {
     const li = document.createElement('li');
     li.className = 'pl-item';
-    li.textContent = item.title;
-    li.onclick = () => openDetail(item);
+    li.textContent = pl.title;
+    li.onclick = () => openDetail(pl);
+    list.appendChild(li);
+  });
+
+  // Default playlists
+  DEFAULT_PLAYLISTS.forEach(pl => {
+    const li = document.createElement('li');
+    li.className = 'pl-item';
+    li.textContent = pl.title;
+    li.onclick = () => openDetail(pl);
+    list.appendChild(li);
+  });
+
+  // Albums
+  ALBUMS.forEach(al => {
+    const li = document.createElement('li');
+    li.className = 'pl-item';
+    li.textContent = al.title;
+    li.onclick = () => openDetail(al);
     list.appendChild(li);
   });
 }
 
-// ─────────────────────────────────────────────
-// HOME PAGE
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// DYNAMIC PLAYLIST CREATION
+// ─────────────────────────────────────────────────────────────────────
+function createNewPlaylist() {
+  const count = S.customPlaylists.length + 1;
+  const newPl = {
+    id: 'userpl-' + Date.now(),
+    title: 'My Playlist #' + count,
+    type: 'Playlist',
+    cover: 'album3.jpg',
+    color: '#3a0a3a',
+    description: 'Custom curated music library',
+    genre: 'electronic',
+    trackIds: []
+  };
+
+  S.customPlaylists.push(newPl);
+  saveState();
+  renderSidebar();
+  openDetail(newPl);
+  showToast('✨ Created New Playlist!');
+}
+
+function addCurrentCollectionToLibrary() {
+  if (!detailCollection) return;
+  showToast(`❤️ Added ${detailCollection.title} to your library`);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DETAIL PAGE
+// ─────────────────────────────────────────────────────────────────────
+let detailCollection = null;
+
+function openDetail(item) {
+  detailCollection = item;
+  document.getElementById('detail-cover').src        = item.cover;
+  document.getElementById('detail-title').textContent = item.title;
+  document.getElementById('detail-type').textContent  = item.type || 'Album';
+
+  const bg = document.getElementById('detail-header-bg');
+  bg.style.background = `linear-gradient(180deg, ${item.color||'#333'} 0%, var(--bg-base) 60%)`;
+  document.getElementById('detail-header').style.background = item.color || '#333';
+
+  let tracks = resolveTracksForItem(item);
+  const totalSec = tracks.reduce((s,t)=>s+(t.duration||0),0);
+  document.getElementById('detail-meta').textContent =
+    `${item.artist||'Soundify'} • ${item.year||'2024'} • ${tracks.length} songs, ${fmtTime(totalSec)}`;
+
+  renderTrackList(document.getElementById('detail-tracks'), tracks);
+
+  document.getElementById('detail-play-fab').onclick = () => playCollection(item);
+  showPage('detail');
+}
+
+function resolveTracksForItem(item) {
+  if (item.tracks) return item.tracks.map(t => {
+    return {...t, cover:item.cover, color:item.color, genre:item.genre, albumId:item.id};
+  });
+  if (item.trackIds) return item.trackIds.map(id => getTrackById(id)).filter(Boolean);
+  if (item.id && item.id.startsWith('t')) return [item];
+  return [];
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// HOME PAGE & CARDS
+// ─────────────────────────────────────────────────────────────────────
 function renderHomePage() {
   renderQuickPicks();
   renderCardGrid('featured-grid', ALBUMS);
-  renderCardGrid('recent-grid', [...PLAYLISTS, ...ALBUMS].slice(0, 6));
-  renderCardGrid('made-for-you-grid', PLAYLISTS);
+  renderCardGrid('recent-grid', [...DEFAULT_PLAYLISTS, ...ALBUMS].slice(0, 6));
+  renderCardGrid('made-for-you-grid', DEFAULT_PLAYLISTS);
 }
 
 function renderQuickPicks() {
   const wrap = document.getElementById('quick-picks');
   wrap.innerHTML = '';
-  [...ALBUMS, ...PLAYLISTS].slice(0, 6).forEach(item => {
+  [...ALBUMS, ...DEFAULT_PLAYLISTS].slice(0, 6).forEach(item => {
     const d = document.createElement('div');
     d.className = 'quick-pick';
     d.innerHTML = `
@@ -484,9 +683,9 @@ function makeCard(item) {
   return d;
 }
 
-// ─────────────────────────────────────────────
-// SEARCH PAGE
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// SEARCH
+// ─────────────────────────────────────────────────────────────────────
 function renderSearchPage() {
   const g = document.getElementById('categories-grid');
   g.innerHTML = '';
@@ -501,9 +700,9 @@ function renderSearchPage() {
 }
 
 function handleSearch(q) {
-  const res     = document.getElementById('search-results');
-  const browse  = document.getElementById('browse-section');
-  const grid    = document.getElementById('search-results-grid');
+  const res    = document.getElementById('search-results');
+  const browse = document.getElementById('browse-section');
+  const grid   = document.getElementById('search-results-grid');
   if (!q.trim()) { res.classList.add('hidden'); browse.style.display = ''; return; }
   browse.style.display = 'none';
   res.classList.remove('hidden');
@@ -511,7 +710,7 @@ function handleSearch(q) {
   const lq = q.toLowerCase();
   const hits = [
     ...ALBUMS.filter(a => a.title.toLowerCase().includes(lq) || a.artist.toLowerCase().includes(lq)),
-    ...PLAYLISTS.filter(p => p.title.toLowerCase().includes(lq)),
+    ...DEFAULT_PLAYLISTS.filter(p => p.title.toLowerCase().includes(lq)),
     ...ALL_TRACKS.filter(t => t.title.toLowerCase().includes(lq) || t.artist.toLowerCase().includes(lq))
       .map(t => ({...t, description:t.artist})),
   ];
@@ -523,10 +722,12 @@ function handleSearch(q) {
   });
 }
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 // LIBRARY PAGE
-// ─────────────────────────────────────────────
-function renderLibraryPage() { populateLibrary([...ALBUMS, ...PLAYLISTS]); }
+// ─────────────────────────────────────────────────────────────────────
+function renderLibraryPage() { 
+  populateLibrary([...S.customPlaylists, ...ALBUMS, ...DEFAULT_PLAYLISTS]); 
+}
 
 function populateLibrary(items) {
   const list = document.getElementById('library-list');
@@ -538,7 +739,7 @@ function populateLibrary(items) {
       <img src="${item.cover}" alt="${item.title}" loading="lazy"/>
       <div class="library-item-info">
         <p class="library-item-name">${item.title}</p>
-        <p class="library-item-sub">${item.type} • ${item.artist||''}</p>
+        <p class="library-item-sub">${item.type || 'Collection'} • ${item.artist||'Created by You'}</p>
       </div>`;
     d.onclick = () => openDetail(item);
     list.appendChild(d);
@@ -548,13 +749,13 @@ function populateLibrary(items) {
 function filterLibrary(type, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const map = {all:[...ALBUMS,...PLAYLISTS], playlists:PLAYLISTS, albums:ALBUMS};
+  const map = {all:[...S.customPlaylists, ...ALBUMS, ...DEFAULT_PLAYLISTS], playlists:[...S.customPlaylists, ...DEFAULT_PLAYLISTS], albums:ALBUMS};
   populateLibrary(map[type] || []);
 }
 
-// ─────────────────────────────────────────────
-// LIKED SONGS PAGE
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// LIKED SONGS
+// ─────────────────────────────────────────────────────────────────────
 function renderLikedPage() {
   const liked = ALL_TRACKS.filter(t => S.liked.has(t.id));
   document.getElementById('liked-count').textContent = liked.length;
@@ -566,46 +767,9 @@ function playLiked() {
   if (liked.length) playTrack(liked[0], liked, 0);
 }
 
-// ─────────────────────────────────────────────
-// DETAIL PAGE
-// ─────────────────────────────────────────────
-let detailCollection = null;
-
-function openDetail(item) {
-  detailCollection = item;
-  document.getElementById('detail-cover').src        = item.cover;
-  document.getElementById('detail-title').textContent = item.title;
-  document.getElementById('detail-type').textContent  = item.type || 'Album';
-
-  const bg = document.getElementById('detail-header-bg');
-  bg.style.background = `linear-gradient(180deg, ${item.color||'#333'} 0%, var(--bg-base) 60%)`;
-  // Set background color of parent too
-  document.getElementById('detail-header').style.background = item.color || '#333';
-
-  let tracks = resolveTracksForItem(item);
-  const totalSec = tracks.reduce((s,t)=>s+(t.duration||0),0);
-  document.getElementById('detail-meta').textContent =
-    `${item.artist||''} • ${item.year||'2024'} • ${tracks.length} songs, ${fmtTime(totalSec)}`;
-
-  renderTrackList(document.getElementById('detail-tracks'), tracks);
-
-  document.getElementById('detail-play-fab').onclick = () => playCollection(item);
-  showPage('detail');
-}
-
-function resolveTracksForItem(item) {
-  if (item.tracks) return item.tracks.map(t => {
-    const al = getAlbumById(item.id);
-    return {...t, cover:item.cover, color:item.color, genre:item.genre, albumId:item.id};
-  });
-  if (item.trackIds) return item.trackIds.map(id => getTrackById(id)).filter(Boolean);
-  if (item.id && item.id.startsWith('t')) return [item];
-  return [];
-}
-
-// ─────────────────────────────────────────────
-// TRACK LIST
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// TRACK LIST MAKER
+// ─────────────────────────────────────────────────────────────────────
 function renderTrackList(container, tracks) {
   container.innerHTML = `
     <div class="track-header">
@@ -646,36 +810,39 @@ function makeTrackRow(track, idx, playlist) {
   return row;
 }
 
-// ─────────────────────────────────────────────
-// PLAYBACK
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// PLAYBACK ENGINE
+// ─────────────────────────────────────────────────────────────────────
 function playTrack(track, playlist, index) {
   initAudio();
 
-  const wasPlaying = S.playing;
   S.track    = track;
   S.playlist = playlist;
   S.index    = index;
   S.playing  = true;
   S.progress = 0;
 
-  // Earn streams
+  // Track Earnings logic
   S.earnings.streams++;
   S.earnings.total = +(S.earnings.total + 0.004).toFixed(4);
+  saveState();
   updateDashboard();
 
   updatePlayerUI();
   updateTrackHighlights();
   updateQueuePanel();
   startProgressTimer();
-  showToast(`▶ ${track.title} — ${track.artist}`);
+  showToast(`▶ ${track.title}`);
 
-  // Start real audio
-  const genre = track.genre || 'electronic';
-  startMusicForGenre(genre);
+  if (track.genre === 'local') {
+    // Play actual uploaded binary audio
+    playLocalFileBuffer(track.id);
+  } else {
+    // Play real Web Audio synthesized soundscapes
+    startMusicForGenre(track.genre || 'electronic');
+  }
+
   if (audioCtx.state === 'suspended') audioCtx.resume();
-
-  // Spinning cover
   document.getElementById('np-cover-wrap').classList.add('spinning');
 }
 
@@ -691,7 +858,11 @@ function togglePlay() {
 
   if (S.playing) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    startMusicForGenre(S.track.genre || 'electronic');
+    if (S.track.genre === 'local') {
+      playLocalFileBuffer(S.track.id);
+    } else {
+      startMusicForGenre(S.track.genre || 'electronic');
+    }
     startProgressTimer();
     document.getElementById('np-cover-wrap').classList.add('spinning');
     showToast('▶ Playing');
@@ -769,12 +940,13 @@ function toggleLike() {
     document.getElementById('np-heart').classList.add('liked');
     showToast('💚 Added to Liked Songs');
   }
+  saveState();
   renderLikedPage();
 }
 
-// ─────────────────────────────────────────────
-// PROGRESS TIMER
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// TIMERS & UI UPDATES
+// ─────────────────────────────────────────────────────────────────────
 function startProgressTimer() {
   clearInterval(S.timer);
   if (!S.track || !S.playing) return;
@@ -791,9 +963,6 @@ function startProgressTimer() {
   }, 250);
 }
 
-// ─────────────────────────────────────────────
-// PLAYER UI
-// ─────────────────────────────────────────────
 function updatePlayerUI() {
   const t = S.track;
   if (!t) return;
@@ -833,9 +1002,9 @@ function updateTrackHighlights() {
   }
 }
 
-// ─────────────────────────────────────────────
-// QUEUE PANEL
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// QUEUE & SYNTH POPUPS
+// ─────────────────────────────────────────────────────────────────────
 function toggleQueue() {
   const p = document.getElementById('queue-panel');
   p.classList.toggle('hidden');
@@ -857,9 +1026,62 @@ function queueTrackHTML(t) {
   </div>`;
 }
 
-// ─────────────────────────────────────────────
-// NAVIGATION
-// ─────────────────────────────────────────────
+// Synth Settings Popover toggle
+function toggleSynthPanel() {
+  const panel = document.getElementById('synth-dsp-panel');
+  panel.classList.toggle('hidden');
+}
+
+// Handle DSP sliders input dynamically
+function setupDSPEvents() {
+  const sliderTempo  = document.getElementById('slider-tempo');
+  const sliderCutoff = document.getElementById('slider-cutoff');
+  const sliderDelay  = document.getElementById('slider-delay');
+  const selectWave  = document.getElementById('select-wave');
+
+  if (sliderTempo) {
+    sliderTempo.oninput = (e) => {
+      dspSettings.tempo = parseInt(e.target.value);
+      document.getElementById('val-tempo').textContent = dspSettings.tempo;
+      if (S.playing && S.track && S.track.genre !== 'local') {
+        // Live update sequencer tempo
+        startMusicForGenre(S.track.genre);
+      }
+    };
+  }
+
+  if (sliderCutoff) {
+    sliderCutoff.oninput = (e) => {
+      dspSettings.cutoff = parseInt(e.target.value);
+      document.getElementById('val-cutoff').textContent = dspSettings.cutoff;
+      if (filterNode) {
+        // Live change Biquad lowpass cutoff frequency
+        filterNode.frequency.setValueAtTime(dspSettings.cutoff, audioCtx.currentTime);
+      }
+    };
+  }
+
+  if (sliderDelay) {
+    sliderDelay.oninput = (e) => {
+      dspSettings.delayFeedback = parseFloat(e.target.value) / 100;
+      document.getElementById('val-delay').textContent = e.target.value;
+      if (delayGainNode) {
+        // Live change echo volume
+        delayGainNode.gain.setValueAtTime(dspSettings.delayFeedback, audioCtx.currentTime);
+      }
+    };
+  }
+
+  if (selectWave) {
+    selectWave.onchange = (e) => {
+      dspSettings.wave = e.target.value;
+    };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PAGE ROUTING & NAVIGATION
+// ─────────────────────────────────────────────────────────────────────
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   const pg = document.getElementById('page-' + name);
@@ -872,57 +1094,54 @@ function showPage(name) {
     S.historyStack.push(name);
     S.historyIdx++;
   }
-  // Lazy-render earnings chart when premium page shows
   if (name === 'premium') setTimeout(drawEarningsChart, 100);
 }
 
-function historyBack()    { if (S.historyIdx > 0)                              { S.historyIdx--; showPage(S.historyStack[S.historyIdx]); } }
-function historyForward() { if (S.historyIdx < S.historyStack.length - 1)      { S.historyIdx++; showPage(S.historyStack[S.historyIdx]); } }
+function historyBack()    { if (S.historyIdx > 0) { S.historyIdx--; showPage(S.historyStack[S.historyIdx]); } }
+function historyForward() { if (S.historyIdx < S.historyStack.length - 1) { S.historyIdx++; showPage(S.historyStack[S.historyIdx]); } }
 
-// ─────────────────────────────────────────────
-// PREMIUM & EARN
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// PREMIUM, DASHBOARD & INITIALIZATION CALLS
+// ─────────────────────────────────────────────────────────────────────
 function startPremium(plan) {
-  showToast(`🎉 ${plan} Premium trial started! 30 days free.`);
+  showToast(`🎉 ${plan} Premium trial activated! 30 days free.`);
   setTimeout(() => showEarnModal('refer'), 2000);
 }
 
 const EARN_MODALS = {
   stream: {
     title: '🎵 Upload & Earn',
-    body: `<p>Upload your music to Soundify and earn <strong style="color:#1DB954">$0.004 per stream</strong>. The more people listen, the more you earn — 24/7, even while you sleep.</p>
-           <input class="modal-input" type="text" placeholder="Artist/Band name..." />
+    body: `<p>Upload music to Soundify and earn <strong style="color:#1DB954">$0.004 per stream</strong>.</p>
+           <input class="modal-input" type="text" placeholder="Artist name..." />
            <input class="modal-input" type="file" accept="audio/*" style="padding:10px"/>`,
     action: 'Upload My Music',
     fn: () => showToast('🚀 Music uploaded! Earning starts now.')
   },
   refer: {
     title: '👥 Refer & Earn $10',
-    body: `<p>Share your unique link. Every friend who subscribes to Premium earns you <strong style="color:#1DB954">$10 cash</strong>. No limit!</p>
-           <div class="referral-code" onclick="copyReferral()" title="Click to copy">SND-X7K2P9</div>`,
+    body: `<p>Share your link. Get <strong style="color:#1DB954">$10 cash</strong> for every signup.</p>
+           <div class="referral-code" onclick="copyReferral()">SND-X7K2P9</div>`,
     action: 'Share My Link',
-    fn: () => { S.earnings.referrals++; S.earnings.total = +(S.earnings.total + 10).toFixed(2); updateDashboard(); showToast('🎉 Referral link copied! +$10 incoming.'); closeEarnModal(); }
+    fn: () => { S.earnings.referrals++; S.earnings.total = +(S.earnings.total + 10).toFixed(2); saveState(); updateDashboard(); showToast('🎉 Referral link copied!'); closeEarnModal(); }
   },
   playlist: {
     title: '📋 Curate Playlists',
-    body: `<p>Build playlists with 1,000+ followers and get paid <strong style="color:#1DB954">$50–$500</strong> per placement from labels and artists.</p>
-           <input class="modal-input" type="text" placeholder="Playlist name..." />
-           <input class="modal-input" type="text" placeholder="Target audience / genre..." />`,
+    body: `<p>Monetize custom playlists. Get placements from records & labels.</p>
+           <input class="modal-input" type="text" placeholder="Playlist title..." />`,
     action: 'Create & Monetize',
-    fn: () => { S.earnings.playlists++; S.earnings.total = +(S.earnings.total + 75).toFixed(2); updateDashboard(); showToast('📋 Playlist created! Monetization enabled.'); closeEarnModal(); }
+    fn: () => { S.earnings.playlists++; S.earnings.total = +(S.earnings.total + 75).toFixed(2); saveState(); updateDashboard(); showToast('📋 Curator account linked!'); closeEarnModal(); }
   },
   podcast: {
-    title: '🎙️ Start Your Podcast',
-    body: `<p>Launch a podcast on Soundify and monetize with listener subscriptions and dynamic ads. Average creators earn <strong style="color:#1DB954">$18 CPM</strong>.</p>
-           <input class="modal-input" type="text" placeholder="Podcast title..." />
-           <input class="modal-input" type="text" placeholder="Category (comedy, tech, news...)" />`,
+    title: '🎙️ Start Podcast',
+    body: `<p>Record podcasts directly in the app. Earn through ads & listeners.</p>
+           <input class="modal-input" type="text" placeholder="Podcast title..." />`,
     action: 'Launch Podcast',
-    fn: () => { showToast('🎙️ Podcast created! Monetization pending approval.'); closeEarnModal(); }
+    fn: () => { showToast('🎙️ Podcast submitted for validation!'); closeEarnModal(); }
   },
 };
 
 function showEarnModal(type) {
-  const cfg   = EARN_MODALS[type];
+  const cfg = EARN_MODALS[type];
   if (!cfg) return;
   const content = document.getElementById('earn-modal-content');
   content.innerHTML = `
@@ -958,9 +1177,118 @@ function updateDashboard() {
   if (el_playlists) el_playlists.textContent = S.earnings.playlists;
 }
 
-// ─────────────────────────────────────────────
-// DRAG-SEEK (progress bar)
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// GLOBAL INITIALIZATION & BINDINGS
+// ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  setGreeting();
+  renderSidebar();
+  renderHomePage();
+  renderSearchPage();
+  renderLibraryPage();
+  renderLikedPage();
+  updatePlayerUI();
+  startVisualizer();
+  updateDashboard();
+  setupLocalFileHandlers();
+  setupDSPEvents();
+
+  // Load first track for player preview
+  const firstTrack = ALL_TRACKS[0];
+  S.track    = firstTrack;
+  S.playlist = ALBUMS[0].tracks.map(t => ({...t, cover:ALBUMS[0].cover, color:ALBUMS[0].color, genre:ALBUMS[0].genre}));
+  S.index    = 0;
+  S.playing  = false;
+  updatePlayerUI();
+
+  document.addEventListener('click', resumeAudioCtx, {once: true});
+});
+
+function setGreeting() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good morning ☀️' : h < 17 ? 'Good afternoon 🎵' : 'Good evening 🌙';
+  document.getElementById('greeting-text').textContent = g;
+}
+
+function setAudioVolume(vol) {
+  if (!masterGain) return;
+  masterGain.gain.setValueAtTime(vol, audioCtx.currentTime);
+}
+
+function resumeAudioCtx() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+      if (S.playing && S.track && S.track.genre !== 'local') startMusicForGenre(S.track.genre);
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// CANVAS LINE CHART
+// ─────────────────────────────────────────────────────────────────────
+function drawEarningsChart() {
+  const canvas = document.getElementById('earnings-canvas');
+  if (!canvas) return;
+  canvas.width  = canvas.offsetWidth  || 700;
+  canvas.height = 140;
+  const ctx  = canvas.getContext('2d');
+  const w    = canvas.width;
+  const h    = canvas.height;
+  const data = [0.2, 0.8, 1.4, 0.9, 2.1, 1.7, 3.2, 2.8, 4.5, 3.9, 5.2, 6.1];
+  const maxV = Math.max(...data) * 1.1;
+  const step = w / (data.length - 1);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Area fill
+  const areaGrad = ctx.createLinearGradient(0, 0, 0, h);
+  areaGrad.addColorStop(0, 'rgba(29,185,84,0.35)');
+  areaGrad.addColorStop(1, 'rgba(29,185,84,0)');
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / maxV) * h * 0.85 - 10;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+  ctx.fillStyle = areaGrad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#1DB954';
+  ctx.lineWidth   = 2.5;
+  ctx.lineJoin    = 'round';
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / maxV) * h * 0.85 - 10;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Dots + labels
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / maxV) * h * 0.85 - 10;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#1DB954';
+    ctx.fill();
+    ctx.fillStyle = '#b3b3b3';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(months[i], x, h - 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px Inter, sans-serif';
+    ctx.fillText('$' + v.toFixed(1), x, y - 8);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DRAG-SEEK (progress & volume)
+// ─────────────────────────────────────────────────────────────────────
 (function () {
   let drag = false;
   const bar = document.getElementById('progress-bar');
@@ -969,7 +1297,6 @@ function updateDashboard() {
   document.addEventListener('mouseup',   () => { drag = false; });
 })();
 
-// Drag-Volume
 (function () {
   let drag = false;
   const bar = document.getElementById('volume-bar');
@@ -978,25 +1305,22 @@ function updateDashboard() {
   document.addEventListener('mouseup',   () => { drag = false; });
 })();
 
-// ─────────────────────────────────────────────
-// KEYBOARD SHORTCUTS
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// SHORTCUTS & UTILS
+// ─────────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
   switch (e.code) {
-    case 'Space':     e.preventDefault(); togglePlay();    break;
+    case 'Space':      e.preventDefault(); togglePlay();    break;
     case 'ArrowRight': if (e.altKey) nextTrack();          break;
     case 'ArrowLeft':  if (e.altKey) prevTrack();          break;
-    case 'KeyM':                          toggleMute();    break;
-    case 'KeyS':       if (e.altKey)      toggleShuffle(); break;
-    case 'KeyR':       if (e.altKey)      toggleRepeat();  break;
-    case 'KeyQ':       if (e.altKey)      toggleQueue();   break;
+    case 'KeyM':                           toggleMute();    break;
+    case 'KeyS':       if (e.altKey)       toggleShuffle(); break;
+    case 'KeyR':       if (e.altKey)       toggleRepeat();  break;
+    case 'KeyQ':       if (e.altKey)       toggleQueue();   break;
   }
 });
 
-// ─────────────────────────────────────────────
-// UTILS
-// ─────────────────────────────────────────────
 function fmtTime(s) {
   s = Math.floor(s || 0);
   return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -1011,7 +1335,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// Resize chart on window resize
 window.addEventListener('resize', () => {
   const pg = document.getElementById('page-premium');
   if (pg && !pg.classList.contains('hidden')) drawEarningsChart();
