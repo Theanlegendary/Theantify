@@ -921,3 +921,38 @@ ul { list-style: none; }
   pointer-events: none; z-index: 3000; white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ========================================
+   DISCLAIMER FOOTER
+   ======================================== */
+.app-disclaimer-footer {
+  background: rgba(0,0,0,0.5);
+  border-top: 1px solid #282828;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  text-align: center;
+  margin-top: 40px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* ========================================
+   CREATOR PAGE & DISTROKID
+   ======================================== */
+.creator-form-card select:focus {
+  border-color: #0adb87 !important;
+}
+.creator-form-card input:focus {
+  border-color: #0adb87 !important;
+}
+#dk-catalog-list::-webkit-scrollbar {
+  width: 4px;
+}
+#dk-catalog-list::-webkit-scrollbar-thumb {
+  background: #3e3e3e;
+  border-radius: 2px;
+}
+#dk-catalog-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

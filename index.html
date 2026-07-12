@@ -42,7 +42,11 @@
       <a href="#" class="nav-item premium-nav" id="nav-premium" onclick="showPage('premium');return false">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/><path d="M12 5l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/></svg>
         <span>Go Premium</span>
-        <span class="premium-badge">NEW</span>
+      </a>
+      <a href="#" class="nav-item creator-nav" id="nav-creator" onclick="showPage('creator');return false" style="color: #0adb87;">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+        <span>DistroKid Hub</span>
+        <span class="premium-badge" style="background:#0adb87; color:#000;">EARN</span>
       </a>
     </nav>
 
@@ -108,6 +112,13 @@
         </section>
         <section class="content-section">
           <div class="section-header">
+            <h2>Real Audio Broadcasts</h2>
+            <a href="#" class="show-all" onclick="return false">Show all</a>
+          </div>
+          <div class="cards-grid" id="real-streams-grid"></div>
+        </section>
+        <section class="content-section">
+          <div class="section-header">
             <h2>Featured Today</h2>
             <a href="#" class="show-all" onclick="showPage('library');return false">Show all</a>
           </div>
@@ -128,6 +139,9 @@
           <div class="cards-grid" id="made-for-you-grid"></div>
         </section>
       </div>
+      <footer class="app-disclaimer-footer">
+        <p>⚠️ <strong>Legal Notice:</strong> Soundify is an independent, non-commercial clone built for educational portfolio demonstration. It has no affiliation with Spotify or any registered music brands. All audio is synthesized locally using the Web Audio API or streamed from open public endpoints.</p>
+      </footer>
     </div>
 
     <!-- ===== PAGE: SEARCH ===== -->
@@ -302,12 +316,12 @@
           </div>
 
           <div class="earn-cards">
-            <div class="earn-card" onclick="showEarnModal('stream')">
+            <div class="earn-card" onclick="showPage('creator')">
               <div class="earn-card-icon">🎵</div>
-              <h3>Stream Royalties</h3>
-              <p>Artists earn per stream. Upload your tracks and start earning.</p>
+              <h3>DistroKid Distribution</h3>
+              <p>Upload your tracks, select platforms, and keep 100% of your earnings.</p>
               <div class="earn-rate">$0.004 <span>per stream</span></div>
-              <button class="earn-action-btn">Upload Music →</button>
+              <button class="earn-action-btn">Launch DistroKid Portal →</button>
             </div>
             <div class="earn-card" onclick="showEarnModal('refer')">
               <div class="earn-card-icon">👥</div>
@@ -366,6 +380,91 @@
         </section>
 
       </div>
+    </div>
+
+    <!-- ===== PAGE: DISTROKID CREATOR HUB ===== -->
+    <div class="page hidden" id="page-creator">
+      <div class="page-inner">
+        <h1 class="page-title" style="display:flex; align-items:center; gap:12px;">
+          <svg viewBox="0 0 24 24" fill="#0adb87" width="36" height="36"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+          DistroKid Creator Hub
+        </h1>
+        <p style="color:var(--text-secondary); margin-bottom:32px;">Distribute your music to Soundify, Apple Music, and other storefronts. 100% legal distribution.</p>
+
+        <div class="creator-grid" style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: start;">
+          
+          <!-- Upload Form -->
+          <div class="creator-form-card" style="background:var(--bg-surface); padding:32px; border-radius:var(--radius-lg); border:1px solid #282828;">
+            <h2 style="font-size:1.3rem; margin-bottom:20px; font-weight:800;">Upload & Distribute New Release</h2>
+            
+            <div class="synth-dsp-setting" style="margin-bottom:16px;">
+              <label for="dk-title" style="margin-bottom:6px; display:block;">Song Title</label>
+              <input type="text" id="dk-title" class="modal-input" placeholder="e.g. Neon Horizon" style="margin-bottom:0;" />
+            </div>
+
+            <div class="synth-dsp-setting" style="margin-bottom:16px;">
+              <label for="dk-artist" style="margin-bottom:6px; display:block;">Artist / Band Name</label>
+              <input type="text" id="dk-artist" class="modal-input" placeholder="e.g. Space Dust" style="margin-bottom:0;" />
+            </div>
+
+            <div class="synth-dsp-setting" style="margin-bottom:16px;">
+              <label for="dk-genre" style="margin-bottom:6px; display:block;">Primary Genre</label>
+              <select id="dk-genre" style="width:100%; background:var(--bg-highlight); border:1px solid #404040; color:#fff; border-radius:var(--radius-sm); padding:12px; font-family:'Inter', sans-serif;">
+                <option value="electronic">Electronic</option>
+                <option value="synthwave">Synthwave</option>
+                <option value="ambient">Ambient / Lo-Fi</option>
+                <option value="pop">Pop</option>
+              </select>
+            </div>
+
+            <div class="dk-audio-upload" style="margin-bottom:24px;">
+              <label style="margin-bottom:6px; display:block; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">Select MP3 Audio File</label>
+              <div onclick="document.getElementById('dk-file').click()" style="border:2px dashed #404040; padding:20px; text-align:center; border-radius:var(--radius-sm); cursor:pointer; background:rgba(0,0,0,0.15); transition:border-color 0.2s;" id="dk-upload-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24" style="margin:0 auto 8px; color:var(--text-secondary);"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span id="dk-file-name" style="font-size:0.8rem; color:var(--text-secondary);">Click to choose audio file</span>
+              </div>
+              <input type="file" id="dk-file" accept="audio/*" style="display:none;" onchange="handleDKFileSelect(this)" />
+            </div>
+
+            <div class="dk-stores" style="margin-bottom:24px;">
+              <label style="margin-bottom:10px; display:block; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">Select Target Music Stores</label>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.85rem;">
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" checked disabled /> Soundify Store</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" checked /> Apple Music</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" checked /> YouTube Music</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" checked /> Amazon Music</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" checked /> Tidal</label>
+              </div>
+            </div>
+
+            <button class="modal-btn" onclick="distributeDKRelease()" style="background:#0adb87; color:#000;">🚀 Distribute Song</button>
+          </div>
+
+          <!-- Earnings & Releases dashboard -->
+          <div class="creator-analytics" style="display:flex; flex-direction:column; gap:24px;">
+            
+            <div style="background:var(--bg-surface); padding:28px; border-radius:var(--radius-lg); border:1px solid #282828; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <p style="font-size:0.8rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.8px; font-weight:700;">Unpaid Balance (DistroKid)</p>
+                <h2 style="font-size:2.2rem; font-weight:900; color:#0adb87; margin-top:4px;" id="val-dk-balance">$0.00</h2>
+              </div>
+              <button class="upgrade-btn" onclick="withdrawDKRoyalties()" style="border-color:#0adb87; color:#0adb87;">Request Payout</button>
+            </div>
+
+            <div style="background:var(--bg-surface); padding:28px; border-radius:var(--radius-lg); border:1px solid #282828; flex:1;">
+              <h2 style="font-size:1.1rem; font-weight:800; margin-bottom:16px;">My Distributed Catalog</h2>
+              <div id="dk-catalog-list" style="display:flex; flex-direction:column; gap:12px; max-height:300px; overflow-y:auto;">
+                <!-- Catalog list populated dynamically -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+      <footer class="app-disclaimer-footer" style="margin-top:60px;">
+        <p>⚠️ <strong>Legal Notice:</strong> DistroKid Portal is a simulation demonstrating how independent digital distribution storefront payouts function. All earnings derived here are simulated local balances and do not represent actual digital currency payouts.</p>
+      </footer>
     </div>
 
   </main>

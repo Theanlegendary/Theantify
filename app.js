@@ -1,9 +1,9 @@
 /* ====================================================================
-   SOUNDIFY — app.js (Real Web Audio Synth DSP, Local Files, Persistence)
+   SOUNDIFY — app.js (Real Streaming, DistroKid Portal, Local Persistence)
    ==================================================================== */
 
 // ─────────────────────────────────────────────────────────────────────
-// DATA
+// DATA (Default Synthetic Releases)
 // ─────────────────────────────────────────────────────────────────────
 const ALBUMS = [
   {
@@ -40,55 +40,75 @@ const ALBUMS = [
       {id:'t16', title:'Morning Mist',      artist:'Avenue of Oaks', duration:243, album:'Forest of Gold'},
     ]
   },
-  {
-    id:'a4', title:'Aquatic Dreams', artist:'Lumina Void', type:'Album',
-    cover:'album4.jpg', color:'#0a2a5a', year:'2024', genre:'ambient',
-    tracks:[
-      {id:'t17', title:'Deep Ocean Floor',  artist:'Lumina Void', duration:358, album:'Aquatic Dreams'},
-      {id:'t18', title:'Bioluminescence',   artist:'Lumina Void', duration:312, album:'Aquatic Dreams'},
-      {id:'t19', title:'Current Drift',     artist:'Lumina Void', duration:278, album:'Aquatic Dreams'},
-      {id:'t20', title:'Tidal Frequency',   artist:'Lumina Void', duration:341, album:'Aquatic Dreams'},
-    ]
-  },
-  {
-    id:'a5', title:'Neon Pulse', artist:'Synthwave Star', type:'Album',
-    cover:'album5.jpg', color:'#8a0a5a', year:'2024', genre:'pop',
-    tracks:[
-      {id:'t21', title:'Pop Music Evolution', artist:'Synthwave Star', duration:185, album:'Neon Pulse'},
-      {id:'t22', title:'Electric Youth',      artist:'Synthwave Star', duration:202, album:'Neon Pulse'},
-      {id:'t23', title:'Candy Glitch',        artist:'Synthwave Star', duration:177, album:'Neon Pulse'},
-      {id:'t24', title:'Arcade Hearts',       artist:'Synthwave Star', duration:211, album:'Neon Pulse'},
-      {id:'t25', title:'Pixel Love',          artist:'Synthwave Star', duration:198, album:'Neon Pulse'},
-      {id:'t26', title:'Dance Protocol',      artist:'Synthwave Star', duration:224, album:'Neon Pulse'},
-    ]
-  },
 ];
 
 const DEFAULT_PLAYLISTS = [
   {
     id:'pl1', title:'Chill Vibes', type:'Playlist', cover:'album4.jpg',
     color:'#0a3a5a', description:'Relax and unwind with the best ambient sounds',
-    genre:'ambient', trackIds:['t17','t18','t12','t13','t6','t19']
+    genre:'ambient', trackIds:['t17','t18','t12','t13','t6']
   },
   {
     id:'pl2', title:'Workout Fuel', type:'Playlist', cover:'album2.jpg',
     color:'#8a2a0a', description:'High energy tracks to power your workout',
-    genre:'synthwave', trackIds:['t7','t21','t22','t24','t8','t23']
+    genre:'synthwave', trackIds:['t7','t21','t22','t24','t8']
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────
+// REAL STREAMING MUSIC TRACKS (SoundHelix Instrumentals)
+// ─────────────────────────────────────────────────────────────────────
+const REAL_STREAMS = [
+  {
+    id: 'stream-1',
+    title: 'SoundHelix Song 1',
+    artist: 'SoundHelix Instrumental',
+    album: 'Web Broadcast Vol. 1',
+    duration: 372,
+    cover: 'album1.jpg',
+    color: '#3a5a8a',
+    genre: 'streaming',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
   },
   {
-    id:'pl3', title:'Deep Focus', type:'Playlist', cover:'album1.jpg',
-    color:'#2a1a5a', description:'Electronic beats for maximum concentration',
-    genre:'electronic', trackIds:['t1','t2','t3','t4','t5','t20']
+    id: 'stream-2',
+    title: 'SoundHelix Song 2',
+    artist: 'SoundHelix Instrumental',
+    album: 'Web Broadcast Vol. 1',
+    duration: 425,
+    cover: 'album2.jpg',
+    color: '#8a4a3a',
+    genre: 'streaming',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
   },
+  {
+    id: 'stream-3',
+    title: 'SoundHelix Song 3',
+    artist: 'SoundHelix Instrumental',
+    album: 'Web Broadcast Vol. 1',
+    duration: 302,
+    cover: 'album3.jpg',
+    color: '#1a5a3a',
+    genre: 'streaming',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+  },
+  {
+    id: 'stream-4',
+    title: 'SoundHelix Song 4',
+    artist: 'SoundHelix Instrumental',
+    album: 'Web Broadcast Vol. 1',
+    duration: 362,
+    cover: 'album4.jpg',
+    color: '#5a3a8a',
+    genre: 'streaming',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
+  }
 ];
 
 const CATEGORIES = [
   {name:'Podcasts',   color:'#1e3264'}, {name:'Electronic', color:'#8400e7'},
   {name:'Pop',        color:'#c10000'}, {name:'Ambient',    color:'#006450'},
   {name:'Hip-Hop',    color:'#e8115b'}, {name:'Rock',       color:'#ba5d07'},
-  {name:'Jazz',       color:'#0d73ec'}, {name:'Classical',  color:'#e13300'},
-  {name:'R&B',        color:'#8d67ab'}, {name:'Metal',      color:'#503750'},
-  {name:'Latin',      color:'#e91429'}, {name:'Dance',      color:'#1e6432'},
 ];
 
 const GENRE_SCALES = {
@@ -100,9 +120,10 @@ const GENRE_SCALES = {
 
 const ALL_TRACKS = [];
 ALBUMS.forEach(al => al.tracks.forEach(t => ALL_TRACKS.push({...t, cover:al.cover, color:al.color, albumId:al.id, genre:al.genre})));
+REAL_STREAMS.forEach(t => ALL_TRACKS.push(t));
 
 // ─────────────────────────────────────────────────────────────────────
-// PERSISTENT STATE
+// STATE & STORAGE
 // ─────────────────────────────────────────────────────────────────────
 let S = {
   track:       null,
@@ -115,12 +136,16 @@ let S = {
   volume:      0.7,
   progress:    0,
   liked:       new Set(['t3','t7','t18']),
-  earnings:    {total:0, streams:0, referrals:0, playlists:0},
+  earnings:    {total: 0.00, streams: 0, referrals: 0, playlists: 0},
   timer:       null,
   historyStack:['home'],
   historyIdx:  0,
-  customPlaylists: [], // Saved to localStorage
-  localFiles:  [],     // Locally uploaded audio files metadata
+  customPlaylists: [],
+  localFiles:  [],
+  
+  // DistroKid Portal releases data
+  dkReleases:  [],
+  dkBalance:   0.00
 };
 
 // Load saved state from LocalStorage
@@ -135,14 +160,22 @@ function loadState() {
     const savedEarnings = localStorage.getItem('soundify_earnings');
     if (savedEarnings) S.earnings = JSON.parse(savedEarnings);
 
+    const savedDKReleases = localStorage.getItem('soundify_dk_releases');
+    if (savedDKReleases) S.dkReleases = JSON.parse(savedDKReleases);
+
+    const savedDKBalance = localStorage.getItem('soundify_dk_balance');
+    if (savedDKBalance) S.dkBalance = parseFloat(savedDKBalance) || 0.00;
+
     const savedLocalFiles = localStorage.getItem('soundify_local_files');
     if (savedLocalFiles) {
       S.localFiles = JSON.parse(savedLocalFiles);
-      // Re-add local files to ALL_TRACKS
-      S.localFiles.forEach(file => {
-        ALL_TRACKS.push(file);
-      });
+      S.localFiles.forEach(file => ALL_TRACKS.push(file));
     }
+
+    // Add DistroKid releases to ALL_TRACKS
+    S.dkReleases.forEach(track => {
+      ALL_TRACKS.push(track);
+    });
   } catch(e) {
     console.error('Failed to load localStorage state:', e);
   }
@@ -153,6 +186,8 @@ function saveState() {
     localStorage.setItem('soundify_liked', JSON.stringify([...S.liked]));
     localStorage.setItem('soundify_playlists', JSON.stringify(S.customPlaylists));
     localStorage.setItem('soundify_earnings', JSON.stringify(S.earnings));
+    localStorage.setItem('soundify_dk_releases', JSON.stringify(S.dkReleases));
+    localStorage.setItem('soundify_dk_balance', S.dkBalance.toString());
     localStorage.setItem('soundify_local_files', JSON.stringify(S.localFiles));
   } catch(e) {
     console.error('Failed to save state to localStorage:', e);
@@ -165,12 +200,9 @@ function getTrackById(id){
 function getAlbumById(id){ 
   return ALBUMS.find(a=>a.id===id); 
 }
-function getCustomPlaylistById(id) {
-  return S.customPlaylists.find(p => p.id === id);
-}
 
 // ─────────────────────────────────────────────────────────────────────
-// WEB AUDIO SYNTH / DSP ENGINE
+// AUDIO DSP GRAPH (Web Audio API)
 // ─────────────────────────────────────────────────────────────────────
 let audioCtx       = null;
 let masterGain     = null;
@@ -184,7 +216,6 @@ let arpTimer       = null;
 let arpStep        = 0;
 let currentGenre   = 'electronic';
 
-// DSP Control values
 let dspSettings = {
   tempo: 120,
   cutoff: 1200,
@@ -192,39 +223,37 @@ let dspSettings = {
   wave: 'sine'
 };
 
-// Local files audio storage
-let localAudioBuffers = {}; // Map of id -> AudioBuffer
+// Live Audio sources
+let localAudioBuffers = {}; 
 let activeFileSource  = null;
+
+// Streaming Audio Node
+let streamingAudioNode = null;
+let streamingSource    = null;
 
 function initAudio() {
   if (audioCtx) return;
   audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
   
-  // Master chain nodes
   masterGain    = audioCtx.createGain();
   filterNode    = audioCtx.createBiquadFilter();
   delayNode     = audioCtx.createDelay(1.5);
   delayGainNode = audioCtx.createGain();
 
-  // DSP default parameters
   masterGain.gain.value = S.volume;
   filterNode.type = 'lowpass';
   filterNode.frequency.value = dspSettings.cutoff;
   delayNode.delayTime.value = 0.3;
   delayGainNode.gain.value = dspSettings.delayFeedback;
 
-  // Wire Delay feedback loop
   delayNode.connect(delayGainNode);
   delayGainNode.connect(delayNode);
 
-  // Synth graph routing: Nodes -> Filter -> Master Gain -> Output
-  // Delay is tapped from filter output and mixed into master gain
   filterNode.connect(masterGain);
   filterNode.connect(delayNode);
   delayNode.connect(masterGain);
 
   masterGain.connect(audioCtx.destination);
-  
   updateDSPUI();
 }
 
@@ -242,8 +271,16 @@ function stopAllAudio() {
     try { activeFileSource.stop(); } catch(e){}
     activeFileSource = null;
   }
+
+  if (streamingAudioNode) {
+    streamingAudioNode.pause();
+    streamingAudioNode.currentTime = 0;
+  }
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// SYNTHESIS GENERATION
+// ─────────────────────────────────────────────────────────────────────
 function startMusicForGenre(genre) {
   stopAllAudio();
   currentGenre = genre || 'electronic';
@@ -251,19 +288,16 @@ function startMusicForGenre(genre) {
 
   if (!audioCtx || audioCtx.state === 'suspended') return;
 
-  // Load genre configs into DSP setting if not tweaked manually yet
   dspSettings.tempo         = cfg.tempo;
   dspSettings.cutoff        = cfg.cutoff;
   dspSettings.delayFeedback = cfg.delayFeedback;
   dspSettings.wave          = cfg.waveform;
   updateDSPUI();
 
-  // Apply parameters dynamically
   filterNode.frequency.setValueAtTime(dspSettings.cutoff, audioCtx.currentTime);
   delayNode.delayTime.setValueAtTime(60 / dspSettings.tempo * 0.5, audioCtx.currentTime);
   delayGainNode.gain.setValueAtTime(dspSettings.delayFeedback, audioCtx.currentTime);
 
-  // ---- Bass drone ----
   const bassOsc  = audioCtx.createOscillator();
   const bassGain = audioCtx.createGain();
   bassOsc.type   = 'sine';
@@ -275,7 +309,6 @@ function startMusicForGenre(genre) {
   bassGain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.5);
   bassNodes = [[bassOsc, bassGain]];
 
-  // ---- Melody Sequence ----
   const notes  = cfg.notes;
   const rootHz = cfg.rootHz;
   const arpSec = 60 / dspSettings.tempo;
@@ -313,7 +346,9 @@ function startMusicForGenre(genre) {
   }, arpSec * 1000);
 }
 
-// Play decoded local audio file
+// ─────────────────────────────────────────────────────────────────────
+// FILE & STREAM PLAYBACK
+// ─────────────────────────────────────────────────────────────────────
 function playLocalFileBuffer(id) {
   stopAllAudio();
   const buffer = localAudioBuffers[id];
@@ -321,18 +356,38 @@ function playLocalFileBuffer(id) {
 
   activeFileSource = audioCtx.createBufferSource();
   activeFileSource.buffer = buffer;
-  
-  // Route local file through the equalizer filter + visualizer graph
   activeFileSource.connect(filterNode);
-  
-  // Handle song ending
   activeFileSource.onended = () => {
-    if (S.playing && activeFileSource) {
-      nextTrack();
-    }
+    if (S.playing && activeFileSource) nextTrack();
   };
-
   activeFileSource.start(0);
+}
+
+function playStreamingTrack(url) {
+  stopAllAudio();
+  initAudio();
+
+  if (!streamingAudioNode) {
+    streamingAudioNode = new Audio();
+    // Allow cross-origin requests so Web Audio filter works
+    streamingAudioNode.crossOrigin = "anonymous";
+    
+    streamingSource = audioCtx.createMediaElementSource(streamingAudioNode);
+    streamingSource.connect(filterNode);
+  }
+
+  streamingAudioNode.src = url;
+  streamingAudioNode.load();
+  streamingAudioNode.play().catch(e => {
+    console.warn("CORS block or media stream failed. Playing directly without equalizer node routing:", e);
+    // Direct playback fallback if CORS fails
+    const fallbackAudio = new Audio(url);
+    fallbackAudio.play();
+  });
+
+  streamingAudioNode.onended = () => {
+    if (S.playing) nextTrack();
+  };
 }
 
 function updateDSPUI() {
@@ -400,13 +455,162 @@ function startVisualizer() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// FRIEND ACTIVITY DATA & MOCKS
+// MOCK DISTROKID UPLOAD / METADATA
+// ─────────────────────────────────────────────────────────────────────
+let dkSelectedFileBuffer = null;
+let dkSelectedFileName   = "";
+
+function handleDKFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  dkSelectedFileName = file.name;
+  document.getElementById('dk-file-name').textContent = file.name;
+  document.getElementById('dk-upload-box').style.borderColor = "#0adb87";
+
+  // Read binary file data into memory
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    dkSelectedFileBuffer = e.target.result;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function distributeDKRelease() {
+  const title  = document.getElementById('dk-title').value.trim();
+  const artist = document.getElementById('dk-artist').value.trim();
+  const genre  = document.getElementById('dk-genre').value;
+
+  if (!title || !artist) {
+    showToast('⚠️ Please enter Title and Artist Name');
+    return;
+  }
+  if (!dkSelectedFileBuffer) {
+    showToast('⚠️ Please select an MP3 audio file first');
+    return;
+  }
+
+  showToast('🚀 Encoding and distributing to stores...');
+
+  initAudio();
+  audioCtx.decodeAudioData(dkSelectedFileBuffer, function(buffer) {
+    const id = 'dk-' + Date.now();
+    const newTrack = {
+      id: id,
+      title: title,
+      artist: artist,
+      album: 'DistroKid Singles',
+      duration: buffer.duration,
+      cover: 'album1.jpg',
+      color: '#0a3a2a',
+      genre: 'local',
+      streams: 0,
+      royalties: 0.00
+    };
+
+    // Store decoded audio buffer locally
+    localAudioBuffers[id] = buffer;
+    
+    // Add to state
+    S.dkReleases.push(newTrack);
+    ALL_TRACKS.push(newTrack);
+    saveState();
+
+    // Clear form inputs
+    document.getElementById('dk-title').value = "";
+    document.getElementById('dk-artist').value = "";
+    document.getElementById('dk-file-name').textContent = "Click to choose audio file";
+    document.getElementById('dk-upload-box').style.borderColor = "#404040";
+    dkSelectedFileBuffer = null;
+
+    showToast('🎉 Live in Soundify & Apple Music Store!');
+    renderDKCatalog();
+    renderHomePage();
+  }, function(err) {
+    console.error('Audio decode failed:', err);
+    showToast('❌ Decode failed. Please try a valid MP3 file.');
+  });
+}
+
+function renderDKCatalog() {
+  const list = document.getElementById('dk-catalog-list');
+  if (!list) return;
+  list.innerHTML = '';
+  
+  if (!S.dkReleases.length) {
+    list.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:20px;">No distributed tracks yet.</p>';
+    return;
+  }
+
+  S.dkReleases.forEach(track => {
+    const row = document.createElement('div');
+    row.style.background = "var(--bg-elevated)";
+    row.style.padding = "12px 16px";
+    row.style.borderRadius = "var(--radius-sm)";
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "center";
+    row.style.cursor = "pointer";
+
+    // Play distributed release directly on click
+    row.onclick = () => playTrack(track, S.dkReleases, S.dkReleases.indexOf(track));
+
+    row.innerHTML = `
+      <div>
+        <p style="font-size:0.85rem; font-weight:700;">${track.title}</p>
+        <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">${track.artist} • ${track.album}</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:0.8rem; font-weight:700; color:#0adb87;">$${(track.royalties || 0).toFixed(3)}</p>
+        <p style="font-size:0.7rem; color:var(--text-secondary); margin-top:2px;">${track.streams || 0} streams</p>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function withdrawDKRoyalties() {
+  if (S.dkBalance <= 0) {
+    showToast('⚠️ No royalties accrued yet.');
+    return;
+  }
+
+  const content = document.getElementById('earn-modal-content');
+  content.innerHTML = `
+    <h2>💰 Withdraw Royalties</h2>
+    <p>DistroKid payout system. Send accumulated streaming royalties to your bank.</p>
+    <div style="margin-bottom:16px; font-size:1.4rem; color:#0adb87; font-weight:900; text-align:center;">
+      $${S.dkBalance.toFixed(2)} USD
+    </div>
+    <input class="modal-input" type="text" id="pay-email" placeholder="PayPal Email or Payoneer Email..." />
+    <button class="modal-btn" onclick="processDKWithdraw()" style="background:#0adb87; color:#000;">Confirm Payout</button>
+  `;
+  document.getElementById('earn-modal-overlay').classList.remove('hidden');
+}
+
+function processDKWithdraw() {
+  const email = document.getElementById('pay-email').value;
+  if (!email || !email.includes('@')) {
+    showToast('⚠️ Please enter a valid payout address');
+    return;
+  }
+  
+  showToast('💸 Payout request submitted! Arriving in 2-3 business days.');
+  
+  // Clear creator wallet balance
+  S.dkBalance = 0.00;
+  document.getElementById('val-dk-balance').textContent = "$0.00";
+  saveState();
+  closeEarnModal();
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// FRIEND SIDEBAR & MOCKS
 // ─────────────────────────────────────────────────────────────────────
 const FRIENDS = [
-  { name: 'Alex Johnson', initial: 'A', online: true, trackId: 't1', ageSec: 4 },
-  { name: 'Chloe Vance',  initial: 'C', online: true, trackId: 't8', ageSec: 12 },
-  { name: 'Marcus Brody', initial: 'M', online: true, trackId: 't12', ageSec: 25 },
-  { name: 'Sarah Connor', initial: 'S', online: false, trackId: null, ageSec: 3600 }
+  { name: 'Alex Johnson', initial: 'A', online: true, trackId: 't1' },
+  { name: 'Chloe Vance',  initial: 'C', online: true, trackId: 't7' },
+  { name: 'Sarah Connor', initial: 'S', online: false, trackId: null }
 ];
 
 function toggleFriendSidebar() {
@@ -454,7 +658,6 @@ function playFriendSong(trackId) {
   if (tr) playTrack(tr, [tr], 0);
 }
 
-// Simulate friend activities changes
 setInterval(() => {
   FRIENDS.forEach(f => {
     if (f.online && Math.random() > 0.6) {
@@ -465,7 +668,7 @@ setInterval(() => {
 }, 15000);
 
 // ─────────────────────────────────────────────────────────────────────
-// LOCAL FILE LOADER & DROPZONE
+// DRAG & DROP IMPORT (LOCAL LIBRARY)
 // ─────────────────────────────────────────────────────────────────────
 function setupLocalFileHandlers() {
   const dropzone = document.getElementById('import-dropzone');
@@ -477,17 +680,14 @@ function setupLocalFileHandlers() {
     e.preventDefault();
     dropzone.classList.add('dragover');
   });
-
   dropzone.addEventListener('dragleave', () => {
     dropzone.classList.remove('dragover');
   });
-
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
     handleImportedFiles(e.dataTransfer.files);
   });
-
   uploader.addEventListener('change', (e) => {
     handleImportedFiles(e.target.files);
   });
@@ -505,7 +705,7 @@ function handleImportedFiles(files) {
         const id = 'local-' + Date.now() + '-' + index;
         const localTrack = {
           id: id,
-          title: file.name.replace(/\.[^/.]+$/, ""), // Strip extension
+          title: file.name.replace(/\.[^/.]+$/, ""),
           artist: 'Local File',
           duration: buffer.duration,
           album: 'Imported Files',
@@ -514,10 +714,7 @@ function handleImportedFiles(files) {
           genre: 'local'
         };
 
-        // Save buffer globally to reference during play
         localAudioBuffers[id] = buffer;
-        
-        // Add to active state
         S.localFiles.push(localTrack);
         ALL_TRACKS.push(localTrack);
         saveState();
@@ -525,8 +722,7 @@ function handleImportedFiles(files) {
         showToast(`✅ Imported: ${localTrack.title}`);
         renderLibraryPage();
       }, function(err) {
-        console.error('Audio decode failed:', err);
-        showToast(`❌ Failed to decode: ${file.name}`);
+        console.error('Decode failed:', err);
       });
     };
     reader.readAsArrayBuffer(file);
@@ -534,13 +730,12 @@ function handleImportedFiles(files) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// GREETING & SIDEBAR PLAYLISTS
+// LAYOUT / CARDS RENDERING
 // ─────────────────────────────────────────────────────────────────────
 function renderSidebar() {
   const list = document.getElementById('sidebar-playlist-list');
   list.innerHTML = '';
   
-  // Custom user playlists
   S.customPlaylists.forEach(pl => {
     const li = document.createElement('li');
     li.className = 'pl-item';
@@ -549,7 +744,6 @@ function renderSidebar() {
     list.appendChild(li);
   });
 
-  // Default playlists
   DEFAULT_PLAYLISTS.forEach(pl => {
     const li = document.createElement('li');
     li.className = 'pl-item';
@@ -558,7 +752,6 @@ function renderSidebar() {
     list.appendChild(li);
   });
 
-  // Albums
   ALBUMS.forEach(al => {
     const li = document.createElement('li');
     li.className = 'pl-item';
@@ -568,77 +761,15 @@ function renderSidebar() {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// DYNAMIC PLAYLIST CREATION
-// ─────────────────────────────────────────────────────────────────────
-function createNewPlaylist() {
-  const count = S.customPlaylists.length + 1;
-  const newPl = {
-    id: 'userpl-' + Date.now(),
-    title: 'My Playlist #' + count,
-    type: 'Playlist',
-    cover: 'album3.jpg',
-    color: '#3a0a3a',
-    description: 'Custom curated music library',
-    genre: 'electronic',
-    trackIds: []
-  };
-
-  S.customPlaylists.push(newPl);
-  saveState();
-  renderSidebar();
-  openDetail(newPl);
-  showToast('✨ Created New Playlist!');
-}
-
-function addCurrentCollectionToLibrary() {
-  if (!detailCollection) return;
-  showToast(`❤️ Added ${detailCollection.title} to your library`);
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// DETAIL PAGE
-// ─────────────────────────────────────────────────────────────────────
-let detailCollection = null;
-
-function openDetail(item) {
-  detailCollection = item;
-  document.getElementById('detail-cover').src        = item.cover;
-  document.getElementById('detail-title').textContent = item.title;
-  document.getElementById('detail-type').textContent  = item.type || 'Album';
-
-  const bg = document.getElementById('detail-header-bg');
-  bg.style.background = `linear-gradient(180deg, ${item.color||'#333'} 0%, var(--bg-base) 60%)`;
-  document.getElementById('detail-header').style.background = item.color || '#333';
-
-  let tracks = resolveTracksForItem(item);
-  const totalSec = tracks.reduce((s,t)=>s+(t.duration||0),0);
-  document.getElementById('detail-meta').textContent =
-    `${item.artist||'Soundify'} • ${item.year||'2024'} • ${tracks.length} songs, ${fmtTime(totalSec)}`;
-
-  renderTrackList(document.getElementById('detail-tracks'), tracks);
-
-  document.getElementById('detail-play-fab').onclick = () => playCollection(item);
-  showPage('detail');
-}
-
-function resolveTracksForItem(item) {
-  if (item.tracks) return item.tracks.map(t => {
-    return {...t, cover:item.cover, color:item.color, genre:item.genre, albumId:item.id};
-  });
-  if (item.trackIds) return item.trackIds.map(id => getTrackById(id)).filter(Boolean);
-  if (item.id && item.id.startsWith('t')) return [item];
-  return [];
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// HOME PAGE & CARDS
-// ─────────────────────────────────────────────────────────────────────
 function renderHomePage() {
   renderQuickPicks();
   renderCardGrid('featured-grid', ALBUMS);
   renderCardGrid('recent-grid', [...DEFAULT_PLAYLISTS, ...ALBUMS].slice(0, 6));
   renderCardGrid('made-for-you-grid', DEFAULT_PLAYLISTS);
+
+  // Combine SoundHelix streams & user DistroKid releases
+  const displayStreams = [...REAL_STREAMS, ...S.dkReleases];
+  renderCardGrid('real-streams-grid', displayStreams);
 }
 
 function renderQuickPicks() {
@@ -677,14 +808,160 @@ function makeCard(item) {
       </button>
     </div>
     <p class="card-title">${item.title}</p>
-    <p class="card-subtitle">${item.artist || item.description || item.type}</p>`;
-  d.onclick = () => openDetail(item);
+    <p class="card-subtitle">${item.artist || item.description || item.type || 'Soundify Stream'}</p>`;
+  d.onclick = () => {
+    // If it's a single track from streaming, double click directly
+    if (item.audioUrl || item.id.startsWith('dk-')) {
+      playTrack(item, [item], 0);
+    } else {
+      openDetail(item);
+    }
+  };
   d.querySelector('.card-play').onclick = e => { e.stopPropagation(); playCollection(item); };
   return d;
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// SEARCH
+// PLAYBACK ENGINE LOGIC
+// ─────────────────────────────────────────────────────────────────────
+function playTrack(track, playlist, index) {
+  initAudio();
+
+  S.track    = track;
+  S.playlist = playlist;
+  S.index    = index;
+  S.playing  = true;
+  S.progress = 0;
+
+  // Real earnings accumulate on plays
+  S.earnings.streams++;
+  S.earnings.total = +(S.earnings.total + 0.004).toFixed(4);
+  
+  // If track was distributed via DistroKid, add specific analytics stream
+  if (track.id.startsWith('dk-')) {
+    const release = S.dkReleases.find(r => r.id === track.id);
+    if (release) {
+      release.streams = (release.streams || 0) + 1;
+      release.royalties = +(release.royalties + 0.004).toFixed(4);
+      S.dkBalance = +(S.dkBalance + 0.004).toFixed(4);
+      
+      const elBal = document.getElementById('val-dk-balance');
+      if (elBal) elBal.textContent = `$${S.dkBalance.toFixed(2)}`;
+    }
+  }
+
+  saveState();
+  updateDashboard();
+
+  updatePlayerUI();
+  updateTrackHighlights();
+  updateQueuePanel();
+  startProgressTimer();
+  showToast(`▶ ${track.title}`);
+
+  if (track.audioUrl) {
+    // Stream real music over http
+    playStreamingTrack(track.audioUrl);
+  } else if (track.genre === 'local') {
+    // Play custom uploaded buffer
+    playLocalFileBuffer(track.id);
+  } else {
+    // Synth sequencer soundscape
+    startMusicForGenre(track.genre || 'electronic');
+  }
+
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  document.getElementById('np-cover-wrap').classList.add('spinning');
+  
+  // Update Catalog if active creator hub page
+  renderDKCatalog();
+}
+
+function playCollection(item) {
+  const tracks = resolveTracksForItem(item);
+  if (tracks.length) playTrack(tracks[0], tracks, 0);
+}
+
+function resolveTracksForItem(item) {
+  if (item.tracks) return item.tracks.map(t => {
+    return {...t, cover:item.cover, color:item.color, genre:item.genre, albumId:item.id};
+  });
+  if (item.trackIds) return item.trackIds.map(id => getTrackById(id)).filter(Boolean);
+  if (item.id) return [item];
+  return [];
+}
+
+function togglePlay() {
+  if (!S.track) return;
+  initAudio();
+  S.playing = !S.playing;
+
+  if (S.playing) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (S.track.audioUrl) {
+      if (streamingAudioNode) streamingAudioNode.play();
+    } else if (S.track.genre === 'local') {
+      playLocalFileBuffer(S.track.id);
+    } else {
+      startMusicForGenre(S.track.genre || 'electronic');
+    }
+    startProgressTimer();
+    document.getElementById('np-cover-wrap').classList.add('spinning');
+    showToast('▶ Playing');
+  } else {
+    stopAllAudio();
+    clearInterval(S.timer);
+    document.getElementById('np-cover-wrap').classList.remove('spinning');
+    showToast('⏸ Paused');
+  }
+  updatePlayerUI();
+}
+
+function nextTrack() {
+  if (!S.playlist.length) return;
+  const nextIdx = S.shuffle
+    ? Math.floor(Math.random() * S.playlist.length)
+    : (S.index + 1) % S.playlist.length;
+  playTrack(S.playlist[nextIdx], S.playlist, nextIdx);
+}
+
+function prevTrack() {
+  if (!S.playlist.length) return;
+  if (S.progress > 0.05) { S.progress = 0; updateProgress(); return; }
+  const prevIdx = (S.index - 1 + S.playlist.length) % S.playlist.length;
+  playTrack(S.playlist[prevIdx], S.playlist, prevIdx);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PAGE ROUTING & NAVIGATION
+// ─────────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  const pg = document.getElementById('page-' + name);
+  if (pg) { pg.classList.remove('hidden'); pg.scrollTop = 0; }
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.getElementById('nav-' + name);
+  if (nav) nav.classList.add('active');
+  
+  if (S.historyStack[S.historyIdx] !== name) {
+    S.historyStack = S.historyStack.slice(0, S.historyIdx + 1);
+    S.historyStack.push(name);
+    S.historyIdx++;
+  }
+  
+  if (name === 'premium') setTimeout(drawEarningsChart, 100);
+  if (name === 'creator') {
+    renderDKCatalog();
+    const elBal = document.getElementById('val-dk-balance');
+    if (elBal) elBal.textContent = `$${S.dkBalance.toFixed(2)}`;
+  }
+}
+
+function historyBack()    { if (S.historyIdx > 0) { S.historyIdx--; showPage(S.historyStack[S.historyIdx]); } }
+function historyForward() { if (S.historyIdx < S.historyStack.length - 1) { S.historyIdx++; showPage(S.historyStack[S.historyIdx]); } }
+
+// ─────────────────────────────────────────────────────────────────────
+// SEARCH / FILTERS / LIKED / OTHER PAGES
 // ─────────────────────────────────────────────────────────────────────
 function renderSearchPage() {
   const g = document.getElementById('categories-grid');
@@ -712,19 +989,14 @@ function handleSearch(q) {
     ...ALBUMS.filter(a => a.title.toLowerCase().includes(lq) || a.artist.toLowerCase().includes(lq)),
     ...DEFAULT_PLAYLISTS.filter(p => p.title.toLowerCase().includes(lq)),
     ...ALL_TRACKS.filter(t => t.title.toLowerCase().includes(lq) || t.artist.toLowerCase().includes(lq))
-      .map(t => ({...t, description:t.artist})),
   ];
-  if (!hits.length) { grid.innerHTML = '<p style="color:#b3b3b3;grid-column:1/-1;padding:20px">No results found.</p>'; return; }
+  if (!hits.length) { grid.innerHTML = '<p style="color:#b3b3b3;grid-column:1/-1;padding:20px;">No results found.</p>'; return; }
   hits.slice(0, 12).forEach(item => {
     const card = makeCard(item);
-    card.onclick = () => item.tracks || item.trackIds ? openDetail(item) : playTrack(getTrackById(item.id)||item, [item], 0);
     grid.appendChild(card);
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// LIBRARY PAGE
-// ─────────────────────────────────────────────────────────────────────
 function renderLibraryPage() { 
   populateLibrary([...S.customPlaylists, ...ALBUMS, ...DEFAULT_PLAYLISTS]); 
 }
@@ -753,9 +1025,6 @@ function filterLibrary(type, btn) {
   populateLibrary(map[type] || []);
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// LIKED SONGS
-// ─────────────────────────────────────────────────────────────────────
 function renderLikedPage() {
   const liked = ALL_TRACKS.filter(t => S.liked.has(t.id));
   document.getElementById('liked-count').textContent = liked.length;
@@ -767,9 +1036,6 @@ function playLiked() {
   if (liked.length) playTrack(liked[0], liked, 0);
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// TRACK LIST MAKER
-// ─────────────────────────────────────────────────────────────────────
 function renderTrackList(container, tracks) {
   container.innerHTML = `
     <div class="track-header">
@@ -810,86 +1076,55 @@ function makeTrackRow(track, idx, playlist) {
   return row;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// PLAYBACK ENGINE
-// ─────────────────────────────────────────────────────────────────────
-function playTrack(track, playlist, index) {
-  initAudio();
+function createNewPlaylist() {
+  const count = S.customPlaylists.length + 1;
+  const newPl = {
+    id: 'userpl-' + Date.now(),
+    title: 'My Playlist #' + count,
+    type: 'Playlist',
+    cover: 'album3.jpg',
+    color: '#3a0a3a',
+    description: 'Custom curated music library',
+    genre: 'electronic',
+    trackIds: []
+  };
 
-  S.track    = track;
-  S.playlist = playlist;
-  S.index    = index;
-  S.playing  = true;
-  S.progress = 0;
-
-  // Track Earnings logic
-  S.earnings.streams++;
-  S.earnings.total = +(S.earnings.total + 0.004).toFixed(4);
+  S.customPlaylists.push(newPl);
   saveState();
-  updateDashboard();
-
-  updatePlayerUI();
-  updateTrackHighlights();
-  updateQueuePanel();
-  startProgressTimer();
-  showToast(`▶ ${track.title}`);
-
-  if (track.genre === 'local') {
-    // Play actual uploaded binary audio
-    playLocalFileBuffer(track.id);
-  } else {
-    // Play real Web Audio synthesized soundscapes
-    startMusicForGenre(track.genre || 'electronic');
-  }
-
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  document.getElementById('np-cover-wrap').classList.add('spinning');
+  renderSidebar();
+  openDetail(newPl);
+  showToast('✨ Created New Playlist!');
 }
 
-function playCollection(item) {
-  const tracks = resolveTracksForItem(item);
-  if (tracks.length) playTrack(tracks[0], tracks, 0);
+function addCurrentCollectionToLibrary() {
+  if (!detailCollection) return;
+  showToast(`❤️ Added ${detailCollection.title} to your library`);
 }
 
-function togglePlay() {
-  if (!S.track) return;
-  initAudio();
-  S.playing = !S.playing;
+function openDetail(item) {
+  detailCollection = item;
+  document.getElementById('detail-cover').src        = item.cover;
+  document.getElementById('detail-title').textContent = item.title;
+  document.getElementById('detail-type').textContent  = item.type || 'Album';
 
-  if (S.playing) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    if (S.track.genre === 'local') {
-      playLocalFileBuffer(S.track.id);
-    } else {
-      startMusicForGenre(S.track.genre || 'electronic');
-    }
-    startProgressTimer();
-    document.getElementById('np-cover-wrap').classList.add('spinning');
-    showToast('▶ Playing');
-  } else {
-    stopAllAudio();
-    clearInterval(S.timer);
-    document.getElementById('np-cover-wrap').classList.remove('spinning');
-    showToast('⏸ Paused');
-  }
-  updatePlayerUI();
+  const bg = document.getElementById('detail-header-bg');
+  bg.style.background = `linear-gradient(180deg, ${item.color||'#333'} 0%, var(--bg-base) 60%)`;
+  document.getElementById('detail-header').style.background = item.color || '#333';
+
+  let tracks = resolveTracksForItem(item);
+  const totalSec = tracks.reduce((s,t)=>s+(t.duration||0),0);
+  document.getElementById('detail-meta').textContent =
+    `${item.artist||'Soundify'} • ${item.year||'2024'} • ${tracks.length} songs, ${fmtTime(totalSec)}`;
+
+  renderTrackList(document.getElementById('detail-tracks'), tracks);
+
+  document.getElementById('detail-play-fab').onclick = () => playCollection(item);
+  showPage('detail');
 }
 
-function nextTrack() {
-  if (!S.playlist.length) return;
-  const nextIdx = S.shuffle
-    ? Math.floor(Math.random() * S.playlist.length)
-    : (S.index + 1) % S.playlist.length;
-  playTrack(S.playlist[nextIdx], S.playlist, nextIdx);
-}
-
-function prevTrack() {
-  if (!S.playlist.length) return;
-  if (S.progress > 0.05) { S.progress = 0; updateProgress(); return; }
-  const prevIdx = (S.index - 1 + S.playlist.length) % S.playlist.length;
-  playTrack(S.playlist[prevIdx], S.playlist, prevIdx);
-}
-
+// ─────────────────────────────────────────────────────────────────────
+// METRICS / BUTTONS BINDINGS
+// ─────────────────────────────────────────────────────────────────────
 function toggleShuffle() {
   S.shuffle = !S.shuffle;
   document.querySelectorAll('#btn-shuffle,.shuffle-btn').forEach(b => b.classList.toggle('active', S.shuffle));
@@ -925,6 +1160,9 @@ function seekTo(e) {
   const bar  = document.getElementById('progress-bar');
   const rect = bar.getBoundingClientRect();
   S.progress = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  if (streamingAudioNode && S.track && S.track.audioUrl) {
+    streamingAudioNode.currentTime = S.progress * S.track.duration;
+  }
   updateProgress();
 }
 
@@ -944,9 +1182,6 @@ function toggleLike() {
   renderLikedPage();
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// TIMERS & UI UPDATES
-// ─────────────────────────────────────────────────────────────────────
 function startProgressTimer() {
   clearInterval(S.timer);
   if (!S.track || !S.playing) return;
@@ -954,11 +1189,22 @@ function startProgressTimer() {
   const step = 1 / (dur * 4);
   S.timer = setInterval(() => {
     if (!S.playing) return;
-    S.progress = Math.min(1, S.progress + step);
+    if (streamingAudioNode && S.track.audioUrl) {
+      S.progress = streamingAudioNode.currentTime / S.track.duration;
+    } else {
+      S.progress = Math.min(1, S.progress + step);
+    }
     updateProgress();
     if (S.progress >= 1) {
       clearInterval(S.timer);
-      S.repeat ? (() => { S.progress=0; startProgressTimer(); })() : nextTrack();
+      S.repeat ? (() => { 
+        if (streamingAudioNode && S.track.audioUrl) {
+          streamingAudioNode.currentTime = 0;
+          streamingAudioNode.play();
+        }
+        S.progress=0; 
+        startProgressTimer(); 
+      })() : nextTrack();
     }
   }, 250);
 }
@@ -1002,9 +1248,6 @@ function updateTrackHighlights() {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// QUEUE & SYNTH POPUPS
-// ─────────────────────────────────────────────────────────────────────
 function toggleQueue() {
   const p = document.getElementById('queue-panel');
   p.classList.toggle('hidden');
@@ -1026,13 +1269,11 @@ function queueTrackHTML(t) {
   </div>`;
 }
 
-// Synth Settings Popover toggle
 function toggleSynthPanel() {
   const panel = document.getElementById('synth-dsp-panel');
   panel.classList.toggle('hidden');
 }
 
-// Handle DSP sliders input dynamically
 function setupDSPEvents() {
   const sliderTempo  = document.getElementById('slider-tempo');
   const sliderCutoff = document.getElementById('slider-cutoff');
@@ -1043,35 +1284,29 @@ function setupDSPEvents() {
     sliderTempo.oninput = (e) => {
       dspSettings.tempo = parseInt(e.target.value);
       document.getElementById('val-tempo').textContent = dspSettings.tempo;
-      if (S.playing && S.track && S.track.genre !== 'local') {
-        // Live update sequencer tempo
+      if (S.playing && S.track && S.track.genre !== 'local' && !S.track.audioUrl) {
         startMusicForGenre(S.track.genre);
       }
     };
   }
-
   if (sliderCutoff) {
     sliderCutoff.oninput = (e) => {
       dspSettings.cutoff = parseInt(e.target.value);
       document.getElementById('val-cutoff').textContent = dspSettings.cutoff;
       if (filterNode) {
-        // Live change Biquad lowpass cutoff frequency
         filterNode.frequency.setValueAtTime(dspSettings.cutoff, audioCtx.currentTime);
       }
     };
   }
-
   if (sliderDelay) {
     sliderDelay.oninput = (e) => {
       dspSettings.delayFeedback = parseFloat(e.target.value) / 100;
       document.getElementById('val-delay').textContent = e.target.value;
       if (delayGainNode) {
-        // Live change echo volume
         delayGainNode.gain.setValueAtTime(dspSettings.delayFeedback, audioCtx.currentTime);
       }
     };
   }
-
   if (selectWave) {
     selectWave.onchange = (e) => {
       dspSettings.wave = e.target.value;
@@ -1079,44 +1314,12 @@ function setupDSPEvents() {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// PAGE ROUTING & NAVIGATION
-// ─────────────────────────────────────────────────────────────────────
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  const pg = document.getElementById('page-' + name);
-  if (pg) { pg.classList.remove('hidden'); pg.scrollTop = 0; }
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const nav = document.getElementById('nav-' + name);
-  if (nav) nav.classList.add('active');
-  if (S.historyStack[S.historyIdx] !== name) {
-    S.historyStack = S.historyStack.slice(0, S.historyIdx + 1);
-    S.historyStack.push(name);
-    S.historyIdx++;
-  }
-  if (name === 'premium') setTimeout(drawEarningsChart, 100);
-}
-
-function historyBack()    { if (S.historyIdx > 0) { S.historyIdx--; showPage(S.historyStack[S.historyIdx]); } }
-function historyForward() { if (S.historyIdx < S.historyStack.length - 1) { S.historyIdx++; showPage(S.historyStack[S.historyIdx]); } }
-
-// ─────────────────────────────────────────────────────────────────────
-// PREMIUM, DASHBOARD & INITIALIZATION CALLS
-// ─────────────────────────────────────────────────────────────────────
 function startPremium(plan) {
   showToast(`🎉 ${plan} Premium trial activated! 30 days free.`);
   setTimeout(() => showEarnModal('refer'), 2000);
 }
 
 const EARN_MODALS = {
-  stream: {
-    title: '🎵 Upload & Earn',
-    body: `<p>Upload music to Soundify and earn <strong style="color:#1DB954">$0.004 per stream</strong>.</p>
-           <input class="modal-input" type="text" placeholder="Artist name..." />
-           <input class="modal-input" type="file" accept="audio/*" style="padding:10px"/>`,
-    action: 'Upload My Music',
-    fn: () => showToast('🚀 Music uploaded! Earning starts now.')
-  },
   refer: {
     title: '👥 Refer & Earn $10',
     body: `<p>Share your link. Get <strong style="color:#1DB954">$10 cash</strong> for every signup.</p>
@@ -1219,7 +1422,9 @@ function setAudioVolume(vol) {
 function resumeAudioCtx() {
   if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume().then(() => {
-      if (S.playing && S.track && S.track.genre !== 'local') startMusicForGenre(S.track.genre);
+      if (S.playing && S.track && S.track.genre !== 'local' && !S.track.audioUrl) {
+        startMusicForGenre(S.track.genre);
+      }
     });
   }
 }
